@@ -1,10 +1,7 @@
 import { Plane } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { User } from "@/App";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
-import { useRef } from "react";
-import { SplitText } from "gsap/SplitText";
+import { useLayoutAnimations } from "@/hooks/animations/useLayoutAnimations";
 
 type LayoutDashboardProps = {
   user: User;
@@ -15,37 +12,8 @@ type LayoutDashboardProps = {
   onNavigate?: (path: string) => void;
 }
 
-gsap.registerPlugin(SplitText)
-
 export default function LayoutDashboard({ user, onLogout, sidebarItems, children, currentPath, onNavigate }: LayoutDashboardProps) {
-  const navRef = useRef<HTMLDivElement>(null)
-  const brandTitleRef = useRef<HTMLHeadingElement>(null)
-
-  useGSAP(() => {
-    const tl = gsap.timeline({ ease: "power1.out", duration: .4 })
-    if (navRef.current) {
-      tl.from(navRef.current, {
-        scaleY: 0,
-      })
-      .from(navRef.current.children, {
-        alpha: 0,
-        scale: 1.2,
-      }, "-=0.1")
-    }
-  })
-
-  useGSAP(() => {
-    if (brandTitleRef.current) {
-      const split = new SplitText(brandTitleRef.current, { type: "chars" });
-      gsap.from(split.chars, {
-        duration: 0.5,
-        y: 20,
-        alpha: 0,
-        stagger: 0.05,
-        ease: "back.out(1.7)",
-      });
-    }
-  })
+  const { navRef, brandTitleRef } = useLayoutAnimations();
 
   const isActive = (itemPath: string) => {
     if (currentPath) {
@@ -104,7 +72,7 @@ export default function LayoutDashboard({ user, onLogout, sidebarItems, children
         {/* Header */}
         <header className="bg-white px-8 py-4">
           <div className="flex items-center justify-between">
-            <h1 ref={brandTitleRef} className="text-sky-500 text-2xl font-bold">{`Flyblue ${user.role === 'admin' ? 'Admin' : ''}`}</h1>
+            <h1 ref={brandTitleRef} className="text-sky-500 text-2xl font-bold cursor-pointer select-none">{`Flyblue ${user.role === 'admin' ? 'Admin' : ''}`}</h1>
             <div className="text-sm text-gray-600">
               Bienvenido, {user.name}
             </div>
