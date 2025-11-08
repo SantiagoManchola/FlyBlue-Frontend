@@ -63,14 +63,14 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
             <p className="text-xs">• admin@skylow.com (Administrador)</p>
             <p className="text-xs">• cliente@email.com (Cliente)</p>
           </div>
-          <Button type="submit" className="w-full h-11 bg-sky-500 hover:bg-sky-600">
+          <Button type="submit" className="w-full h-11 bg-sky-500 hover:bg-sky-600 cursor-pointer active:scale-95">
             Ingresar
           </Button>
           <div className="text-center pt-2">
             <button
               type="button"
               onClick={onSwitchToRegister}
-              className="text-sm text-sky-600 hover:text-sky-700 hover:underline"
+              className="text-sm text-sky-600 hover:text-sky-700 hover:underline cursor-pointer"
             >
               ¿No tienes cuenta? Regístrate
             </button>

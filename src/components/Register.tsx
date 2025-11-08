@@ -92,7 +92,7 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
             <button
               type="button"
               onClick={onSwitchToLogin}
-              className="text-sm text-sky-600 hover:text-sky-700 hover:underline"
+              className="text-sm text-sky-600 hover:text-sky-700 hover:underline cursor-pointer"
             >
               ¿Ya tienes cuenta? Inicia sesión
             </button>

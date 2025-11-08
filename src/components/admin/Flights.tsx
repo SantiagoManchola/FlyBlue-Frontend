@@ -123,7 +123,7 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-sky-500 hover:bg-sky-600">
+            <Button className="bg-sky-500 hover:bg-sky-600 rounded-4xl">
               <Plus className="w-4 h-4 mr-2" />
               Nuevo Vuelo
             </Button>
@@ -279,7 +279,7 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                   </div>
                   {onViewDetail && (
                     <Button
-                      className="bg-sky-500 hover:bg-sky-600 w-full min-w-[180px]"
+                      className="bg-sky-500 hover:bg-sky-600 w-full min-w-[180px] rounded-4xl"
                       onClick={() => onViewDetail(flight.id)}
                     >
                       <Eye className="w-4 h-4 mr-2" />

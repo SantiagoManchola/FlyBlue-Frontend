@@ -36,16 +36,16 @@ export default function ClientDashboard({ user, onLogout }: ClientDashboardProps
   ];
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-20 bg-white border-r flex flex-col items-center py-6">
+      <aside className="bg-gray-50 flex flex-col items-center py-6 m-5 rounded-full">
         <div className="mb-8">
           <div className="w-10 h-10 bg-sky-500 rounded-lg flex items-center justify-center">
             <Plane className="w-6 h-6 text-white" />
           </div>
         </div>
 
-        <nav className="flex-1 flex flex-col items-center gap-6">
+        <nav className="flex-1 flex flex-col items-center justify-center gap-6">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id || 
@@ -56,7 +56,7 @@ export default function ClientDashboard({ user, onLogout }: ClientDashboardProps
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id as ClientView)}
-                className={`p-3 rounded-lg transition-colors group relative ${
+                className={`p-3 rounded-lg transition-colors group relative cursor-pointer ${
                   isActive ? 'bg-sky-500 text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-700'
                 }`}
                 title={item.label}
@@ -70,7 +70,7 @@ export default function ClientDashboard({ user, onLogout }: ClientDashboardProps
         <div className="mt-auto">
           <button
             onClick={onLogout}
-            className="relative group p-3 rounded-lg hover:bg-gray-100 transition-colors"
+            className="relative group p-3 rounded-lg cursor-pointer"
             title="Cerrar Sesión"
           >
             <Avatar className="w-10 h-10">
@@ -85,9 +85,9 @@ export default function ClientDashboard({ user, onLogout }: ClientDashboardProps
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="bg-white border-b px-8 py-4">
+        <header className="bg-white px-8 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-sky-500">Flyblue</h1>
+            <h1 className="text-sky-500 text-2xl font-bold">Flyblue</h1>
             <div className="text-sm text-gray-600">
               Bienvenido, {user.name}
             </div>
@@ -95,7 +95,7 @@ export default function ClientDashboard({ user, onLogout }: ClientDashboardProps
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto p-8 bg-gray-50">
+        <main className="flex-1 overflow-y-auto p-8">
           {currentView === 'flights' && (
             <Flights
               onBookFlight={handleBookFlight}
