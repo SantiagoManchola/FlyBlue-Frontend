@@ -1,0 +1,40 @@
+{
+  "ciudades": [
+    {
+      "id": 1,
+      "nombre": "Bogotá",
+      "pais": "Colombia",
+      "codigo_iata": "BOG"
+    },
+    {
+      "id": 2,
+      "nombre": "Medellín",
+      "pais": "Colombia",
+      "codigo_iata": "MDE"
+    },
+    {
+      "id": 3,
+      "nombre": "Cartagena",
+      "pais": "Colombia",
+      "codigo_iata": "CTG"
+    },
+    {
+      "id": 4,
+      "nombre": "Cali",
+      "pais": "Colombia",
+      "codigo_iata": "CLO"
+    },
+    {
+      "id": 5,
+      "nombre": "Miami",
+      "pais": "Estados Unidos",
+      "codigo_iata": "MIA"
+    },
+    {
+      "id": 6,
+      "nombre": "Ciudad de México",
+      "pais": "México",
+      "codigo_iata": "MEX"
+    }
+  ]
+}

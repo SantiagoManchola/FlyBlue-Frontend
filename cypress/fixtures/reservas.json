@@ -1,0 +1,69 @@
+{
+  "reservas": [
+    {
+      "id": 1,
+      "usuario_id": 2,
+      "vuelo_id": 1,
+      "numero_asiento": "12A",
+      "fecha_reserva": "2025-11-01T10:00:00Z",
+      "estado": "confirmada",
+      "precio_total": 200000,
+      "vuelo": {
+        "id": 1,
+        "numero_vuelo": "FB001",
+        "origen": {
+          "nombre": "Bogotá",
+          "codigo_iata": "BOG"
+        },
+        "destino": {
+          "nombre": "Medellín",
+          "codigo_iata": "MDE"
+        },
+        "fecha_salida": "2025-12-01T08:00:00Z",
+        "fecha_llegada": "2025-12-01T09:30:00Z"
+      },
+      "equipajes": [
+        {
+          "id": 1,
+          "tipo": "Equipaje de mano",
+          "precio": 0
+        },
+        {
+          "id": 2,
+          "tipo": "Equipaje facturado",
+          "precio": 50000
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "usuario_id": 2,
+      "vuelo_id": 3,
+      "numero_asiento": "24C",
+      "fecha_reserva": "2025-11-05T15:30:00Z",
+      "estado": "pendiente",
+      "precio_total": 950000,
+      "vuelo": {
+        "id": 3,
+        "numero_vuelo": "FB003",
+        "origen": {
+          "nombre": "Bogotá",
+          "codigo_iata": "BOG"
+        },
+        "destino": {
+          "nombre": "Miami",
+          "codigo_iata": "MIA"
+        },
+        "fecha_salida": "2025-12-05T14:00:00Z",
+        "fecha_llegada": "2025-12-05T19:00:00Z"
+      },
+      "equipajes": [
+        {
+          "id": 2,
+          "tipo": "Equipaje facturado",
+          "precio": 100000
+        }
+      ]
+    }
+  ]
+}

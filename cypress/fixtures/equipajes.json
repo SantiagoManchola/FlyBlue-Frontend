@@ -1,0 +1,25 @@
+{
+  "equipajes": [
+    {
+      "id": 1,
+      "tipo": "Equipaje de mano",
+      "peso_maximo": 10,
+      "precio": 0,
+      "descripcion": "Bolso o maleta pequeña que puede llevar en cabina"
+    },
+    {
+      "id": 2,
+      "tipo": "Equipaje facturado",
+      "peso_maximo": 23,
+      "precio": 50000,
+      "descripcion": "Maleta estándar que se factura en bodega"
+    },
+    {
+      "id": 3,
+      "tipo": "Equipaje extra",
+      "peso_maximo": 32,
+      "precio": 100000,
+      "descripcion": "Maleta grande o equipaje adicional"
+    }
+  ]
+}

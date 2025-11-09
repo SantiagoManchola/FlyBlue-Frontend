@@ -1,0 +1,70 @@
+{
+  "vuelos": [
+    {
+      "id": 1,
+      "numero_vuelo": "FB001",
+      "origen_id": 1,
+      "destino_id": 2,
+      "origen": {
+        "id": 1,
+        "nombre": "Bogotá",
+        "codigo_iata": "BOG"
+      },
+      "destino": {
+        "id": 2,
+        "nombre": "Medellín",
+        "codigo_iata": "MDE"
+      },
+      "fecha_salida": "2025-12-01T08:00:00Z",
+      "fecha_llegada": "2025-12-01T09:30:00Z",
+      "precio": 150000,
+      "capacidad_total": 180,
+      "asientos_disponibles": 145,
+      "estado": "programado"
+    },
+    {
+      "id": 2,
+      "numero_vuelo": "FB002",
+      "origen_id": 2,
+      "destino_id": 3,
+      "origen": {
+        "id": 2,
+        "nombre": "Medellín",
+        "codigo_iata": "MDE"
+      },
+      "destino": {
+        "id": 3,
+        "nombre": "Cartagena",
+        "codigo_iata": "CTG"
+      },
+      "fecha_salida": "2025-12-01T10:00:00Z",
+      "fecha_llegada": "2025-12-01T11:30:00Z",
+      "precio": 180000,
+      "capacidad_total": 180,
+      "asientos_disponibles": 120,
+      "estado": "programado"
+    },
+    {
+      "id": 3,
+      "numero_vuelo": "FB003",
+      "origen_id": 1,
+      "destino_id": 5,
+      "origen": {
+        "id": 1,
+        "nombre": "Bogotá",
+        "codigo_iata": "BOG"
+      },
+      "destino": {
+        "id": 5,
+        "nombre": "Miami",
+        "codigo_iata": "MIA"
+      },
+      "fecha_salida": "2025-12-05T14:00:00Z",
+      "fecha_llegada": "2025-12-05T19:00:00Z",
+      "precio": 850000,
+      "capacidad_total": 250,
+      "asientos_disponibles": 200,
+      "estado": "programado"
+    }
+  ]
+}
