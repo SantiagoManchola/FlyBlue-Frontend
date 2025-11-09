@@ -3,7 +3,7 @@ import { Plane } from 'lucide-react';
 
 export default function AuthLayout() {
   return (
-    <div className="h-screen flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-dvh flex items-center justify-center relative py-10">
       <div className='absolute -z-10 w-full h-full'>
         <img src="/images/bg-login.png" className='object-cover w-full h-full' alt="Background" />
       </div>
