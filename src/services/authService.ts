@@ -22,8 +22,18 @@ export const authService = {
     login: async (data: LoginRequest) => {
         try {
             const res = await loginUsuario(data);
-            if (res.token) {
-                localStorage.setItem("token", res.token);
+            if (res.access_token) {
+                // Guardar el token con su tipo
+                localStorage.setItem("token", `${res.token_type} ${res.access_token}`);
+                
+                // Guardar información del usuario
+                const userData = {
+                    id: res.id_usuario,
+                    nombre: res.nombre,
+                    correo: res.correo,
+                    rol: res.rol
+                };
+                localStorage.setItem("user", JSON.stringify(userData));
             }
             return res;
         } catch (error) {
@@ -43,5 +53,6 @@ export const authService = {
 
     logout: () => {
         localStorage.removeItem("token");
+        localStorage.removeItem("user");
     },
 };

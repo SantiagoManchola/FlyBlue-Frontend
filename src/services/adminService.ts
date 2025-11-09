@@ -15,6 +15,7 @@ import {
   CiudadRequest,
   EquipajeRequest,
   VueloRequest,
+  VueloBusquedaResponse,
 } from "../api/types";
 
 export const adminService = {
@@ -54,9 +55,13 @@ export const adminService = {
     }
   },
 
-  buscarVuelos: async () => {
+  buscarVuelos: async (
+    origen: number,
+    destino: number,
+    fecha: string
+  ): Promise<VueloBusquedaResponse[]> => {
     try {
-      return await buscarVuelos();
+      return await buscarVuelos(origen, destino, fecha);
     } catch (error) {
       console.error("Error al buscar vuelos:", error);
       throw error;

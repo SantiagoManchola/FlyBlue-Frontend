@@ -7,6 +7,7 @@ import {
 } from "../api/client/pagos.api";
 import {
     ReservaRequest,
+    PagoRequest
 } from "../api/types";
 
 
@@ -29,7 +30,7 @@ export const clientService = {
         }
     },
 
-    procesarPago: async (reservaId: number, data: any) => {
+    procesarPago: async (reservaId: number, data: PagoRequest) => {
         try {
             return await procesarPago(reservaId, data);
         } catch (error) {
