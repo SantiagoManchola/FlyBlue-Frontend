@@ -58,11 +58,6 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
               required
             />
           </div>
-          <div className="text-sm text-gray-600 bg-sky-50 p-4 rounded-lg border border-sky-100">
-            <p className="mb-2">💡 Prueba con:</p>
-            <p className="text-xs">• admin@skylow.com (Administrador)</p>
-            <p className="text-xs">• cliente@email.com (Cliente)</p>
-          </div>
           <Button type="submit" className="w-full h-11 bg-sky-500 hover:bg-sky-600 cursor-pointer active:scale-95">
             Ingresar
           </Button>

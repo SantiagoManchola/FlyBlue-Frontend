@@ -161,11 +161,6 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             </div>
             <Separator />
             <div className="flex justify-between items-center">
-              <span className="text-gray-600">Reservados:</span>
-              <span className="text-yellow-600">{flight.reservedSeats}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between items-center">
               <span className="text-gray-600">Tasa de Ocupación:</span>
               <span className="text-sky-600">
                 {Math.round(((flight.occupiedSeats + flight.reservedSeats) / flight.totalSeats) * 100)}%
@@ -174,50 +169,6 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-sky-500" />
-            Reservas Recientes
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {bookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="bg-sky-100 p-2 rounded-full">
-                    <Users className="w-5 h-5 text-sky-600" />
-                  </div>
-                  <div>
-                    <p className="text-gray-800">{booking.passenger}</p>
-                    <p className="text-sm text-gray-500">Asiento: {booking.seat}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Briefcase className="w-4 h-4 text-gray-400" />
-                    <p className="text-sm text-gray-600">{booking.luggage}</p>
-                  </div>
-                  <Badge
-                    className={
-                      booking.status === 'confirmed'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }
-                  >
-                    {booking.status === 'confirmed' ? 'Confirmada' : 'Pendiente'}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader>
