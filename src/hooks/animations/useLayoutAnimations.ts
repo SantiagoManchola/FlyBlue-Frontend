@@ -2,6 +2,7 @@ import { useRef } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { SplitText } from "gsap/SplitText";
+import useMediaQuery from "../useMediaQuery";
 
 gsap.registerPlugin(SplitText);
 
@@ -9,23 +10,23 @@ export const useLayoutAnimations = () => {
   const navRef = useRef<HTMLDivElement>(null);
   const brandTitleRef = useRef<HTMLHeadingElement>(null);
   const isAnimating = useRef(false);
+  const isMobile = useMediaQuery()
 
   // Animación del sidebar (solo al montar)
   useGSAP(() => {
     const tl = gsap.timeline({ ease: "power1.out", duration: 0.4 });
     if (navRef.current) {
-      tl.from(navRef.current, {
-        scaleY: 0,
-      }).from(
-        navRef.current.children,
-        {
+      tl
+        .from(navRef.current, {
+          scaleY: isMobile ? 1 : 0,
+          scaleX: isMobile ? 0 : 1
+        })
+        .from(navRef.current.children, {
           alpha: 0,
           scale: 1.2,
-        },
-        "-=0.1"
-      );
+        }, "-=0.1")
     }
-  });
+  }, [isMobile]);
 
   // Animación del título con hover
   useGSAP(() => {

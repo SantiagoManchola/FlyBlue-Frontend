@@ -23,16 +23,16 @@ export default function LayoutDashboard({ user, onLogout, sidebarItems, children
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex flex-col md:flex-row h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside ref={navRef} className="bg-gray-50 flex flex-col items-center py-6 m-5 rounded-full">
-        <div className="mb-8">
-          <div className="w-10 h-10 bg-sky-500 rounded-lg flex items-center justify-center">
-            <Plane className="w-6 h-6 text-white" />
+      <aside ref={navRef} className="bg-gray-50 flex md:flex-col items-center px-5 md:px-0 md:py-6 m-5 rounded-full">
+        <div className="md:mb-8 mb-0">
+          <div className="hidden md:flex w-10 h-10 items-center justify-center">
+            <Plane className="w-6 h-6 text-gray-500" />
           </div>
         </div>
 
-        <nav className="flex-1 flex flex-col items-center justify-center gap-6">
+        <nav className="flex-1 flex md:flex-col items-center justify-start md:justify-center gap-6">
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);

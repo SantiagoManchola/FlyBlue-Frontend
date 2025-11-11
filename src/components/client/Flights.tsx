@@ -4,6 +4,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import bgHero from '/images/bg-client.png';
 
 type Flight = {
   id: string;
@@ -105,14 +106,8 @@ export default function Flights({ onBookFlight }: FlightsProps) {
   return (
     <div className="space-y-6">
       {/* Hero Section */}
-      <div 
-        className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-sky-300 to-blue-400 p-8 md:p-12"
-        style={{
-          backgroundImage: `linear-gradient(to bottom right, rgba(125, 211, 252, 0.9), rgba(96, 165, 250, 0.9)), url('https://images.unsplash.com/photo-1654632011689-0d8bb4a50a4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibHVlJTIwYWlycGxhbmUlMjBza3l8ZW58MXx8fHwxNzYyNTQ4OTU3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
+      <div className="relative rounded-3xl overflow-hidden bg-linear-to-br from-sky-300 to-blue-400 p-8 md:p-12">
+        <img className='absolute w-full h-full inset-0 object-cover opacity-75' src={bgHero} />
         <div className="relative z-10">
           <h2 className="text-white mb-2">Planifica Tu Viaje</h2>
           <p className="text-white/90 mb-8 max-w-xl">
