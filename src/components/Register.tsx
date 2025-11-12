@@ -73,18 +73,6 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
               required
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="role" className="text-gray-700">Tipo de Usuario</Label>
-            <Select value={role} onValueChange={(value: 'admin' | 'client') => setRole(value)}>
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="client">Cliente</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <Button type="submit" className="w-full h-11 bg-sky-500 hover:bg-sky-600">
             Registrarse
           </Button>
