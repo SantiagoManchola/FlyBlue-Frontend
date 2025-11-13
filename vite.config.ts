@@ -1,10 +1,12 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
-  import { defineConfig } from 'vite';
-  import react from '@vitejs/plugin-react-swc';
-  import path from 'path';
-  import tailwindcss from '@tailwindcss/vite';
+export default defineConfig(async () => {
+  const tailwindModule = await import('@tailwindcss/vite');
+  const tailwindcss = (tailwindModule && (tailwindModule.default ?? tailwindModule)) as any;
 
-  export default defineConfig({
+  return {
     plugins: [react(), tailwindcss()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -57,5 +59,14 @@
     server: {
       port: 3000,
       open: true,
+      proxy: {
+        '/v1': {
+          target: 'https://flyblue-api-server-dev-g0a8bsfaethdehe0.canadacentral-01.azurewebsites.net',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path,
+        }
+      }
     },
-  });
+  };
+});
