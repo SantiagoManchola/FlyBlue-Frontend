@@ -22,22 +22,24 @@ export const authService = {
     login: async (data: LoginRequest) => {
         try {
             const res = await loginUsuario(data);
-            if (res.access_token) {
-                // Guardar el token con su tipo
-                localStorage.setItem("token", `${res.token_type} ${res.access_token}`);
+            console.log("✅ Response completo:", res); // Ver qué viene
+            
+            if (res.token) {
+                console.log("✅ Token guardado:", res.token.substring(0, 20) + "...");
+                localStorage.setItem("token", res.token);
                 
-                // Guardar información del usuario
                 const userData = {
-                    id: res.id_usuario,
+                    id_usuario: res.id_usuario,
                     nombre: res.nombre,
                     correo: res.correo,
-                    rol: res.rol
                 };
                 localStorage.setItem("user", JSON.stringify(userData));
+            } else {
+                console.error("❌ NO HAY TOKEN EN LA RESPUESTA");
             }
             return res;
         } catch (error) {
-            console.error("Error al iniciar sesión:", error);
+            console.error("❌ Error al iniciar sesión:", error);
             throw error;
         }
     },

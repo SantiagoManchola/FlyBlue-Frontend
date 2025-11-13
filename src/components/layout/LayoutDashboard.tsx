@@ -152,7 +152,9 @@ export default function LayoutDashboard({ user, onLogout, sidebarItems, children
               <button
                 onClick={() => {
                   setMenuOpen(false);
-                  onNavigate?.('/profile');
+                  // Navegar a profile según el rol del usuario
+                  const profilePath = user.role === 'admin' ? '/admin/profile' : '/client/profile';
+                  onNavigate?.(profilePath);
                 }}
                 className="flex-1 flex items-center justify-center gap-3 px-6 py-3 rounded-lg bg-gradient-to-r from-sky-50 to-sky-100 hover:from-sky-100 hover:to-sky-150 text-sky-600 font-medium transition-all duration-200 border border-sky-200"
                 title="Ver perfil"
