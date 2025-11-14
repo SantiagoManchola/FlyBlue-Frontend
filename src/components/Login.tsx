@@ -11,6 +11,8 @@ type LoginProps = {
   onSwitchToRegister: () => void;
 };
 
+const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1Iiwicm9sIjoiYWRtaW4ifQ.9nTE9P9Yu3JZl5egMhPKrI3LqLUxQL_NsDZh1TDMH-U";
+
 export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,12 +30,16 @@ export default function Login({ onLogin, onSwitchToRegister }: LoginProps) {
         contraseña: password,
       });
 
+      // Validar si el token es exactamente igual al token de admin
+      const storedToken = localStorage.getItem('token');
+      const isAdmin = storedToken === ADMIN_TOKEN;
+
       // Mapear correctamente la respuesta
       const user: User = {
         id: response.id_usuario.toString(),
         name: response.nombre,
         email: response.correo,
-        role: (response.rol || "client") === "admin" ? "admin" : "client",
+        role: isAdmin ? "admin" : "client",
       };
 
       onLogin(user);
