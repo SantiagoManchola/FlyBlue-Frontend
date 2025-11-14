@@ -8,7 +8,7 @@ import {
     LoginRequest
 } from "../api/types";
 
-const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1Iiwicm9sIjoiYWRtaW4ifQ.9nTE9P9Yu3JZl5egMhPKrI3LqLUxQL_NsDZh1TDMH-U";
+const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN;
 
 export const authService = {
     registrar: async (data: RegistroRequest) => {
@@ -37,7 +37,7 @@ export const authService = {
                     id_usuario: res.id_usuario,
                     nombre: res.nombre,
                     correo: res.correo,
-                    rol: isAdminToken ? "admin" : "client", // ✅ Guardar el rol aquí
+                    rol: isAdminToken ? "admin" : "client",
                 };
                 localStorage.setItem("user", JSON.stringify(userData));
                 console.log("✅ Rol guardado:", isAdminToken ? "admin" : "client");

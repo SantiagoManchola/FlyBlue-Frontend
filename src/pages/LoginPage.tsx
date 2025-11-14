@@ -6,7 +6,7 @@ type LoginPageProps = {
   onLogin: (user: User) => void;
 };
 
-const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1Iiwicm9sIjoiYWRtaW4ifQ.9nTE9P9Yu3JZl5egMhPKrI3LqLUxQL_NsDZh1TDMH-U";
+const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN;
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const navigate = useNavigate();
@@ -15,7 +15,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     onLogin(user);
     const storedToken = localStorage.getItem('token');
     
-    if (storedToken == ADMIN_TOKEN) {
+    if (storedToken === ADMIN_TOKEN) {
       navigate('/admin/flights'); 
     } else {
       navigate('/client/flights');
