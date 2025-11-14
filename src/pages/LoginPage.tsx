@@ -6,13 +6,20 @@ type LoginPageProps = {
   onLogin: (user: User) => void;
 };
 
+const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN;
+
 export default function LoginPage({ onLogin }: LoginPageProps) {
   const navigate = useNavigate();
 
   const handleLogin = (user: User) => {
     onLogin(user);
-    // Redirigir según el rol
-    navigate(user.role === 'admin' ? '/admin/flights' : '/client/flights');
+    const storedToken = localStorage.getItem('token');
+    
+    if (storedToken === ADMIN_TOKEN) {
+      navigate('/admin/flights'); 
+    } else {
+      navigate('/client/flights');
+    }
   };
 
   const handleSwitchToRegister = () => {
