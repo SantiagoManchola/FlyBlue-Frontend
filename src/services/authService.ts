@@ -8,6 +8,8 @@ import {
     LoginRequest
 } from "../api/types";
 
+const ADMIN_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1Iiwicm9sIjoiYWRtaW4ifQ.9nTE9P9Yu3JZl5egMhPKrI3LqLUxQL_NsDZh1TDMH-U";
+
 export const authService = {
     registrar: async (data: RegistroRequest) => {
         try {
@@ -22,18 +24,23 @@ export const authService = {
     login: async (data: LoginRequest) => {
         try {
             const res = await loginUsuario(data);
-            console.log("✅ Response completo:", res); // Ver qué viene
+            console.log("✅ Response completo:", res);
             
             if (res.token) {
                 console.log("✅ Token guardado:", res.token.substring(0, 20) + "...");
                 localStorage.setItem("token", res.token);
                 
+                // Validar si el token es exactamente igual al token de admin
+                const isAdminToken = res.token === ADMIN_TOKEN;
+                
                 const userData = {
                     id_usuario: res.id_usuario,
                     nombre: res.nombre,
                     correo: res.correo,
+                    rol: isAdminToken ? "admin" : "client", // ✅ Guardar el rol aquí
                 };
                 localStorage.setItem("user", JSON.stringify(userData));
+                console.log("✅ Rol guardado:", isAdminToken ? "admin" : "client");
             } else {
                 console.error("❌ NO HAY TOKEN EN LA RESPUESTA");
             }
