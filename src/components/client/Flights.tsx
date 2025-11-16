@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plane, X } from 'lucide-react';
+import { Plane, X, MapPin, Calendar } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
@@ -24,12 +24,26 @@ type FlightsProps = {
 };
 
 // Mock cities data
-const cities = [
-  { code: 'MAD', name: 'Madrid' },
-  { code: 'BCN', name: 'Barcelona' },
-  { code: 'CDG', name: 'París' },
-  { code: 'LHR', name: 'Londres' },
-  { code: 'FCO', name: 'Roma' },
+const cityGroups = [
+  {
+    country: 'España',
+    cities: [
+      { code: 'MAD', name: 'Madrid' },
+      { code: 'BCN', name: 'Barcelona' },
+    ],
+  },
+  {
+    country: 'Francia',
+    cities: [{ code: 'CDG', name: 'París' }],
+  },
+  {
+    country: 'Reino Unido',
+    cities: [{ code: 'LHR', name: 'Londres' }],
+  },
+  {
+    country: 'Italia',
+    cities: [{ code: 'FCO', name: 'Roma' }],
+  },
 ];
 
 export default function Flights({ onBookFlight }: FlightsProps) {
@@ -84,45 +98,57 @@ export default function Flights({ onBookFlight }: FlightsProps) {
     },
   ]);
 
-  const [searchOrigin, setSearchOrigin] = useState<string | undefined>(undefined);
-  const [searchDestination, setSearchDestination] = useState<string | undefined>(undefined);
+  const [searchOrigin, setSearchOrigin] = useState<string>('all');
+  const [searchDestination, setSearchDestination] = useState<string>('all');
   const [searchDate, setSearchDate] = useState('');
 
   const filteredFlights = flights.filter((flight) => {
-    const matchOrigin = !searchOrigin || flight.origin === searchOrigin;
-    const matchDestination = !searchDestination || flight.destination === searchDestination;
+    const matchOrigin =
+      !searchOrigin || searchOrigin === 'all' || flight.origin === searchOrigin;
+    const matchDestination =
+      !searchDestination || searchDestination === 'all' || flight.destination === searchDestination;
     const matchDate = !searchDate || flight.departureDate === searchDate;
     return matchOrigin && matchDestination && matchDate;
   });
 
   const clearFilters = () => {
-    setSearchOrigin(undefined);
-    setSearchDestination(undefined);
+    setSearchOrigin('all');
+    setSearchDestination('all');
     setSearchDate('');
   };
 
-  const hasActiveFilters = searchOrigin || searchDestination || searchDate;
+  const hasActiveFilters =
+    searchOrigin !== 'all' ||
+    searchDestination !== 'all' ||
+    !!searchDate;
 
   return (
     <div className="space-y-6">
       {/* Hero Section */}
-      <div className="relative rounded-3xl overflow-hidden bg-linear-to-br from-sky-300 to-blue-400 p-8 md:p-12">
-        <img className='absolute w-full h-full inset-0 object-cover opacity-75' src={bgHero} />
+      <div
+        className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-sky-300 to-blue-400 p-8 md:p-12"
+        style={{
+          backgroundImage: `linear-gradient(to bottom right, rgba(125, 211, 252, 0.9), rgba(96, 165, 250, 0.9)), url('https://images.unsplash.com/photo-1654632011689-0d8bb4a50a4e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxibHVlJTIwYWlycGxhbmUlMjBza3l8ZW58MXx8fHwxNzYyNTQ4OTU3fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
         <div className="relative z-10">
           <h2 className="text-white mb-2">Planifica Tu Viaje</h2>
           <p className="text-white/90 mb-8 max-w-xl">
             Descubre destinos increíbles al mejor precio
           </p>
-          
+
           <Card className="bg-white/95 backdrop-blur-sm shadow-xl">
             <CardContent className="p-6">
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="origin" className="text-gray-700">Desde</Label>
-                    {searchOrigin && (
+                    {searchOrigin !== 'all' && (
                       <button
-                        onClick={() => setSearchOrigin(undefined)}
+                        type="button"
+                        onClick={() => setSearchOrigin('all')}
                         className="text-gray-400 hover:text-gray-600 transition-colors"
                         title="Limpiar"
                       >
@@ -130,26 +156,54 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       </button>
                     )}
                   </div>
-                  <Select value={searchOrigin} onValueChange={(value) => setSearchOrigin(value === 'all' ? undefined : value)}>
-                    <SelectTrigger className="bg-white">
+                  <Select value={searchOrigin} onValueChange={(value) => setSearchOrigin(value)}>
+                    <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Origen" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las ciudades</SelectItem>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name} ({city.code})
-                        </SelectItem>
+
+                    <SelectContent className="w-[280px]">
+                      <SelectItem value="all" className="font-semibold">
+                        Todas las ciudades
+                      </SelectItem>
+
+                      <div className="my-1 h-px bg-gray-100" />
+
+                      {cityGroups.map((group) => (
+                        <div
+                          key={group.country}
+                          className="grid grid-cols-[110px,1fr] gap-2 px-1 py-1"
+                        >
+                          {/* Columna país */}
+                          <div className="text-sm font-semibold text-sky-700 bg-sky-50 rounded-md px-2 py-1 flex items-center">
+                            {group.country}
+                          </div>
+
+                          {/* Columna ciudades */}
+                          <div className="flex flex-col gap-1">
+                            {group.cities.map((city) => (
+                              <SelectItem
+                                key={city.code}
+                                value={city.code}
+                                className="flex items-center justify-between"
+                              >
+                                <span>{city.name}</span>
+                                <span className="text-xs text-gray-400">{city.code}</span>
+                              </SelectItem>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </SelectContent>
                   </Select>
+
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="destination" className="text-gray-700">Hacia</Label>
-                    {searchDestination && (
+                    {searchDestination !== 'all' && (
                       <button
-                        onClick={() => setSearchDestination(undefined)}
+                        type="button"
+                        onClick={() => setSearchDestination('all')}
                         className="text-gray-400 hover:text-gray-600 transition-colors"
                         title="Limpiar"
                       >
@@ -157,19 +211,43 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       </button>
                     )}
                   </div>
-                  <Select value={searchDestination} onValueChange={(value) => setSearchDestination(value === 'all' ? undefined : value)}>
-                    <SelectTrigger className="bg-white">
+                  <Select value={searchDestination} onValueChange={(value) => setSearchDestination(value)}>
+                    <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Destino" />
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todas las ciudades</SelectItem>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name} ({city.code})
-                        </SelectItem>
+
+                    <SelectContent className="w-[280px]">
+                      <SelectItem value="all" className="font-semibold">
+                        Todas las ciudades
+                      </SelectItem>
+
+                      <div className="my-1 h-px bg-gray-100" />
+
+                      {cityGroups.map((group) => (
+                        <div
+                          key={group.country}
+                          className="grid grid-cols-[110px,1fr] gap-2 px-1 py-1"
+                        >
+                          <div className="text-sm font-semibold text-sky-700 bg-sky-50 rounded-md px-2 py-1 flex items-center">
+                            {group.country}
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            {group.cities.map((city) => (
+                              <SelectItem
+                                key={city.code}
+                                value={city.code}
+                                className="flex items-center justify-between"
+                              >
+                                <span>{city.name}</span>
+                                <span className="text-xs text-gray-400">{city.code}</span>
+                              </SelectItem>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </SelectContent>
                   </Select>
+
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -194,9 +272,8 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                 </div>
                 <div className="flex items-end">
                   {hasActiveFilters && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full" 
+                    <Button
+                      variant="outline"
                       onClick={clearFilters}
                     >
                       <X className="w-4 h-4 mr-2" />
@@ -238,7 +315,7 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                         <p className="text-gray-600 mb-0.5">{flight.origin}</p>
                         <p className="text-xs text-gray-400">{flight.originCity}</p>
                       </div>
-                      
+
                       <div className="flex-1 flex flex-col items-center gap-2">
                         <div className="flex items-center w-full">
                           <div className="h-px bg-gray-200 flex-1"></div>
@@ -263,7 +340,7 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       <p className="text-xs text-gray-500 mb-1">Desde</p>
                       <p className="text-3xl text-sky-500">€{flight.price}</p>
                     </div>
-                    
+
                     <div className="flex flex-col gap-2 w-full min-w-[200px]">
                       <Button
                         className="bg-sky-500 hover:bg-sky-600 w-full"
