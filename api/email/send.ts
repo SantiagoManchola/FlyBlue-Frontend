@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -12,45 +12,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Missing required fields: to, subject, html' });
   }
 
-  // Configuración Gmail SMTP
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  const apiKey = process.env.SENDGRID_API_KEY;
+  const fromEmail = process.env.SENDGRID_FROM_EMAIL;
 
-  if (!gmailUser || !gmailPass) {
+  if (!apiKey || !fromEmail) {
     return res.status(500).json({ 
-      error: 'Gmail credentials not configured. Add GMAIL_USER and GMAIL_APP_PASSWORD to environment variables.' 
+      error: 'SendGrid not configured. Add SENDGRID_API_KEY and SENDGRID_FROM_EMAIL.' 
     });
   }
 
   try {
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true,
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
+    sgMail.setApiKey(apiKey);
 
-    const info = await transporter.sendMail({
-      from: `"FlyBlue" <${gmailUser}>`,
+    const msg = {
       to,
+      from: fromEmail,
       subject,
       html,
-    });
+    };
+
+    await sgMail.send(msg);
 
     return res.status(200).json({ 
-      success: true, 
-      messageId: info.messageId,
+      success: true,
       message: 'Email sent successfully'
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending email:', error);
     return res.status(500).json({ 
       error: 'Failed to send email',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error.message || 'Unknown error'
     });
   }
 }

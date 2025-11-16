@@ -6,7 +6,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
-import { sendPaymentConfirmationEmail } from '../../api/client/emailClient';
+import { emailService } from '../../services/emailService';
 
 type CreatePaymentProps = {
   bookingId: string;
@@ -16,6 +16,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     cardNumber: '',
     cardName: '',
@@ -51,19 +52,130 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
         setPaymentFailed(true);
         setIsProcessing(false);
       } else {
-        // Pago exitoso: enviar email de confirmación
+        // Pago exitoso: enviar email de confirmación completo
+        setSendingEmail(true);
         try {
-          const userEmail = localStorage.getItem('userEmail') || 'cliente@ejemplo.com';
-          await sendPaymentConfirmationEmail({
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          const userEmail = userData.correo || 'cliente@ejemplo.com';
+          
+          await emailService.enviarCorreo({
             to: userEmail,
-            nombre: booking.passengerName,
-            vuelo: booking.flightNumber,
-            fecha: booking.departureDate,
-            total: booking.totalPrice,
+            subject: `🎉 Pago Confirmado - Vuelo ${booking.flightNumber}`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px;">
+                <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                  
+                  <!-- Header -->
+                  <div style="background: linear-gradient(135deg, #28a745, #20c997); padding: 30px; text-align: center;">
+                    <h1 style="color: white; margin: 0; font-size: 28px;">💳 ¡Pago Confirmado!</h1>
+                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Tu vuelo está listo</p>
+                  </div>
+                  
+                  <!-- Content -->
+                  <div style="padding: 30px;">
+                    <h2 style="color: #333; margin-top: 0;">¡Gracias ${booking.passengerName}! ✈️</h2>
+                    
+                    <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
+                      Tu pago ha sido procesado exitosamente. Tu vuelo está confirmado y listo para el viaje.
+                    </p>
+                    
+                    <!-- Detalles del Vuelo -->
+                    <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0;">
+                      <h3 style="color: #333; margin-top: 0; margin-bottom: 20px;">✈️ Detalles del Vuelo</h3>
+                      <div style="display: grid; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Reserva:</strong>
+                          <span style="color: #333; font-weight: bold;">${booking.bookingNumber}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Vuelo:</strong>
+                          <span style="color: #333;">${booking.flightNumber}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Ruta:</strong>
+                          <span style="color: #333;">${booking.origin} → ${booking.destination}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Fecha:</strong>
+                          <span style="color: #333;">${booking.departureDate} - ${booking.departureTime}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Pasajero:</strong>
+                          <span style="color: #333;">${booking.passengerName}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                          <strong style="color: #666;">Asiento:</strong>
+                          <span style="color: #333; font-weight: bold;">${booking.seat}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Detalles del Pago -->
+                    <div style="background: #e8f5e8; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #28a745;">
+                      <h3 style="color: #28a745; margin-top: 0; margin-bottom: 20px;">💰 Resumen del Pago</h3>
+                      <div style="display: grid; gap: 12px;">
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                          <span style="color: #666;">Precio del vuelo:</span>
+                          <span style="color: #333;">€${booking.flightPrice}</span>
+                        </div>
+                        ${booking.luggagePrice > 0 ? `
+                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
+                          <span style="color: #666;">Equipaje:</span>
+                          <span style="color: #333;">€${booking.luggagePrice}</span>
+                        </div>
+                        ` : ''}
+                        <div style="border-top: 2px solid #28a745; padding-top: 12px; margin-top: 12px;">
+                          <div style="display: flex; justify-content: space-between;">
+                            <strong style="color: #28a745; font-size: 18px;">Total Pagado:</strong>
+                            <strong style="color: #28a745; font-size: 20px;">€${booking.totalPrice}</strong>
+                          </div>
+                        </div>
+                        <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px;">
+                          <div style="display: flex; justify-content: space-between; font-size: 14px;">
+                            <span style="color: #666;">Transacción:</span>
+                            <span style="color: #333; font-family: monospace;">TRX-${Date.now().toString().slice(-8)}</span>
+                          </div>
+                          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px;">
+                            <span style="color: #666;">Fecha de pago:</span>
+                            <span style="color: #333;">${new Date().toLocaleString('es-ES')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Instrucciones -->
+                    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 25px 0;">
+                      <h4 style="color: #856404; margin-top: 0;">📋 Próximos pasos:</h4>
+                      <ul style="color: #856404; line-height: 1.6; margin: 0; padding-left: 20px;">
+                        <li>Llega al aeropuerto 2 horas antes del vuelo</li>
+                        <li>Presenta tu documento de identidad</li>
+                        <li>Usa el código <strong>${booking.bookingNumber}</strong> para el check-in</li>
+                        <li>Tu asiento <strong>${booking.seat}</strong> está confirmado</li>
+                      </ul>
+                    </div>
+                    
+                    <p style="color: #666; line-height: 1.6; text-align: center; margin-top: 30px;">
+                      ¡Que tengas un excelente viaje! ✈️<br>
+                      <strong>Equipo FlyBlue</strong>
+                    </p>
+                  </div>
+                  
+                  <!-- Footer -->
+                  <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
+                    <p style="color: #999; margin: 0; font-size: 14px;">
+                      © 2025 FlyBlue - Tu aerolínea de confianza
+                    </p>
+                  </div>
+                  
+                </div>
+              </div>
+            `
           });
-          console.log('Email de confirmación enviado');
+          console.log('Email de confirmación completo enviado');
         } catch (emailError) {
           console.warn('No se pudo enviar email, pero el pago se confirmó:', emailError);
+        } finally {
+          setSendingEmail(false);
         }
         
         setPaymentComplete(true);
@@ -169,9 +281,12 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                 <span className="text-green-600">€{booking.totalPrice}</span>
               </div>
             </div>
-            <p className="text-sm text-gray-600">
-              Hemos enviado tu tarjeta de embarque por correo electrónico.
-            </p>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <p className="text-sm text-blue-800 text-center">
+                📧 <strong>Confirmación enviada por correo</strong><br />
+                Revisa tu bandeja de entrada para ver todos los detalles de tu vuelo
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -264,9 +379,13 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600">
+                <Button 
+                  type="submit" 
+                  disabled={isProcessing || sendingEmail}
+                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-400"
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pagar €{booking.totalPrice}
+                  {isProcessing ? 'Procesando pago...' : sendingEmail ? 'Enviando confirmación...' : `Pagar €${booking.totalPrice}`}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">

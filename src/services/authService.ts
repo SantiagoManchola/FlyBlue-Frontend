@@ -7,11 +7,36 @@ import {
     RegistroRequest,
     LoginRequest
 } from "../api/types";
+import { emailService } from "./emailService";
 
 export const authService = {
     registrar: async (data: RegistroRequest) => {
         try {
             const res = await registrarUsuario(data);
+            
+            // Enviar correo de bienvenida
+            try {
+                await emailService.enviarCorreo({
+                    to: data.correo,
+                    subject: '¡Bienvenido a FlyBlue! ✈️',
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                            <div style="background: #0057ff; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+                                <h1 style="color: white; margin: 0;">✈️ ¡Bienvenido a FlyBlue!</h1>
+                            </div>
+                            <div style="background: white; padding: 30px; border-radius: 0 0 8px 8px;">
+                                <h2>Hola ${data.nombre}! 👋</h2>
+                                <p>Tu cuenta ha sido creada exitosamente.</p>
+                                <p>Ya puedes comenzar a reservar tus vuelos con nosotros.</p>
+                                <p>¡Gracias por elegir FlyBlue!</p>
+                            </div>
+                        </div>
+                    `
+                });
+            } catch (emailError) {
+                console.warn('Error enviando correo de bienvenida:', emailError);
+            }
+            
             return res;
         } catch (error) {
             console.error("Error al registrar usuario:", error);
