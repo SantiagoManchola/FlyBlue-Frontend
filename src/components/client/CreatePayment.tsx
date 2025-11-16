@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
+import { sendPaymentConfirmationEmail } from '../../api/client/emailClient';
 
 type CreatePaymentProps = {
   bookingId: string;
@@ -43,13 +44,28 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     
     // Simulate payment processing with sandbox behavior
     // Card ending in "0000" will fail, others succeed
-    setTimeout(() => {
+    setTimeout(async () => {
       const lastFourDigits = formData.cardNumber.replace(/\s/g, '').slice(-4);
       
       if (lastFourDigits === '0000') {
         setPaymentFailed(true);
         setIsProcessing(false);
       } else {
+        // Pago exitoso: enviar email de confirmación
+        try {
+          const userEmail = localStorage.getItem('userEmail') || 'cliente@ejemplo.com';
+          await sendPaymentConfirmationEmail({
+            to: userEmail,
+            nombre: booking.passengerName,
+            vuelo: booking.flightNumber,
+            fecha: booking.departureDate,
+            total: booking.totalPrice,
+          });
+          console.log('Email de confirmación enviado');
+        } catch (emailError) {
+          console.warn('No se pudo enviar email, pero el pago se confirmó:', emailError);
+        }
+        
         setPaymentComplete(true);
         setIsProcessing(false);
       }
