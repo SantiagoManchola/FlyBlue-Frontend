@@ -9,7 +9,28 @@ import {
 } from "../api/types";
 import { emailService } from "./emailService";
 
-const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN;
+// Función para decodificar JWT
+const decodeToken = (token: string): { sub: string; rol: string } | null => {
+    try {
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            console.error("❌ Token inválido: no tiene 3 partes");
+            return null;
+        }
+
+        // Decodificar el payload (segunda parte)
+        const payload = parts[1];
+        const decodedPayload = JSON.parse(
+            atob(payload.replace(/-/g, '+').replace(/_/g, '/'))
+        );
+
+        console.log("✅ Token decodificado:", decodedPayload);
+        return decodedPayload;
+    } catch (error) {
+        console.error("❌ Error al decodificar token:", error);
+        return null;
+    }
+};
 
 export const authService = {
     registrar: async (data: RegistroRequest) => {
@@ -55,17 +76,24 @@ export const authService = {
                 console.log("✅ Token guardado:", res.token.substring(0, 20) + "...");
                 localStorage.setItem("token", res.token);
                 
-                // Validar si el token es exactamente igual al token de admin
-                const isAdminToken = res.token === ADMIN_TOKEN;
+                // Decodificar el token para obtener el rol
+                const decodedToken = decodeToken(res.token);
+                
+                if (!decodedToken) {
+                    throw new Error("No se pudo decodificar el token");
+                }
+
+                // Validar si el rol es "admin"
+                const isAdmin = decodedToken.rol === "admin";
                 
                 const userData = {
                     id_usuario: res.id_usuario,
                     nombre: res.nombre,
                     correo: res.correo,
-                    rol: isAdminToken ? "admin" : "client",
+                    rol: isAdmin ? "admin" : "client",
                 };
                 localStorage.setItem("user", JSON.stringify(userData));
-                console.log("✅ Rol guardado:", isAdminToken ? "admin" : "client");
+                console.log("✅ Rol guardado:", isAdmin ? "admin" : "client");
             } else {
                 console.error("❌ NO HAY TOKEN EN LA RESPUESTA");
             }
