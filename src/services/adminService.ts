@@ -45,7 +45,7 @@ export const adminService = {
       // Notificar por correo la creación del vuelo
       try {
         await emailService.enviarCorreo({
-          to: 'admin@flyblue.com',
+          to: 'flyblue2025@gmail.com',
           subject: `✈️ Nuevo vuelo creado - ${vuelo.codigo}`,
           html: `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">

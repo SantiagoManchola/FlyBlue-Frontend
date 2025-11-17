@@ -29,7 +29,7 @@ export const clientService = {
                 });
                 
                 // Notificar a administradores
-                await emailService.notificarNuevaReserva('admin@flyblue.com', {
+                await emailService.notificarNuevaReserva('flyblue2025@gmail.com', {
                     codigo: reserva.codigo || 'N/A',
                     cliente: data.nombre || 'Cliente',
                     vuelo: `${data.origen} → ${data.destino}`
@@ -67,7 +67,7 @@ export const clientService = {
                 );
                 
                 // Notificar a administradores del nuevo pago
-                await emailService.notificarNuevoPago('admin@flyblue.com', {
+                await emailService.notificarNuevoPago('flyblue2025@gmail.com', {
                     reserva: `RES-${reservaId}`,
                     cliente: data.nombre_titular || 'Cliente',
                     monto: data.monto || 0
