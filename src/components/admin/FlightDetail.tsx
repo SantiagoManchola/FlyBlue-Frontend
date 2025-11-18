@@ -1,48 +1,87 @@
-import { Plane, MapPin, Clock, DollarSign, Users, Calendar, Briefcase, Grid3X3 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plane, MapPin, Clock, DollarSign, Users, Calendar, Briefcase, Grid3X3, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Separator } from '../ui/separator';
+import { adminService } from '../../services/adminService';
+import { obtenerAsientosVuelo } from '../../api/admin/vuelos.api';
+import { VueloResponse, Asiento } from '../../api/types';
+import { toast } from 'sonner';
 
 type FlightDetailProps = {
   flightId: string;
 };
 
 export default function FlightDetail({ flightId }: FlightDetailProps) {
-  // Mock data - in real app this would come from API
-  const flight = {
-    id: flightId,
-    flightNumber: 'SL101',
-    origin: { code: 'MAD', name: 'Madrid', country: 'España' },
-    destination: { code: 'BCN', name: 'Barcelona', country: 'España' },
-    departureDate: '2024-02-15',
-    departureTime: '08:00',
-    arrivalTime: '09:15',
-    duration: '1h 15m',
-    price: 49.99,
-    aircraft: 'Airbus A320',
-    status: 'scheduled',
-    totalSeats: 180,
-    availableSeats: 120,
-    occupiedSeats: 45,
-    reservedSeats: 15,
+  const [flight, setFlight] = useState<VueloResponse | null>(null);
+  const [asientos, setAsientos] = useState<Asiento[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadFlightData();
+  }, [flightId]);
+
+  const loadFlightData = async () => {
+    try {
+      console.log('🔄 FlightDetail - Cargando datos para vuelo ID:', flightId);
+      setIsLoading(true);
+      
+      // Intentar cargar datos del vuelo
+      const flightData = await adminService.obtenerVueloPorId(parseInt(flightId));
+      console.log('✅ FlightDetail - Datos del vuelo:', flightData);
+      setFlight(flightData);
+      
+      // Intentar cargar asientos (puede fallar si no hay asientos creados)
+      try {
+        const asientosData = await obtenerAsientosVuelo(parseInt(flightId));
+        console.log('✅ FlightDetail - Asientos:', asientosData);
+        setAsientos(asientosData.asientos || []);
+      } catch (asientosError) {
+        console.warn('⚠️ No se pudieron cargar los asientos:', asientosError);
+        setAsientos([]);
+      }
+    } catch (error: any) {
+      console.error('❌ FlightDetail - Error al cargar datos del vuelo:', error);
+      const errorMsg = error?.response?.data?.detail || 'Error al cargar la información del vuelo';
+      toast.error(errorMsg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const bookings = [
-    { id: '1', passenger: 'Juan Pérez', seat: '12A', luggage: 'Equipaje de Mano', status: 'confirmed' },
-    { id: '2', passenger: 'María García', seat: '15C', luggage: 'Equipaje Facturado', status: 'confirmed' },
-    { id: '3', passenger: 'Carlos López', seat: '8B', luggage: 'Equipaje de Mano', status: 'pending' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
+      </div>
+    );
+  }
 
-  // Generate seats: 20 rows, 5 seats per row (A-E) for 100 seats total
+  if (!flight) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">No se encontró el vuelo</p>
+      </div>
+    );
+  }
+
+  const departureDate = new Date(flight.fecha_salida);
+  const arrivalDate = new Date(flight.fecha_llegada);
+  const duration = Math.round((arrivalDate.getTime() - departureDate.getTime()) / (1000 * 60));
+  const durationHours = Math.floor(duration / 60);
+  const durationMinutes = duration % 60;
+
   const rows = 20;
   const seatsPerRow = ['A', 'B', 'C', 'D', 'E'];
-  const occupiedSeats = ['3A', '3B', '5C', '7D', '10A', '12A', '12E', '15B', '15C', '18C', '8B']; // Mock occupied seats from bookings
+  const occupiedSeats = asientos
+    .filter(a => !a.disponible)
+    .map(a => `${a.fila}${a.columna}`);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-sky-600">Detalle del Vuelo {flight.flightNumber}</h2>
+          <h2 className="text-sky-600">Detalle del Vuelo {flight.codigo}</h2>
           <p className="text-gray-600">Información completa del vuelo</p>
         </div>
         <Badge className="bg-blue-100 text-blue-700">Programado</Badge>
@@ -59,12 +98,12 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Número de Vuelo:</span>
-              <span className="text-gray-800">{flight.flightNumber}</span>
+              <span className="text-gray-800">{flight.codigo}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Aeronave:</span>
-              <span className="text-gray-800">{flight.aircraft}</span>
+              <span className="text-gray-800">Airbus A320</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
@@ -85,17 +124,15 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             <div>
               <p className="text-sm text-gray-500 mb-1">Origen</p>
               <p className="text-gray-800">
-                {flight.origin.name} ({flight.origin.code})
+                {flight.ciudad_salida}
               </p>
-              <p className="text-sm text-gray-600">{flight.origin.country}</p>
             </div>
             <Separator />
             <div>
               <p className="text-sm text-gray-500 mb-1">Destino</p>
               <p className="text-gray-800">
-                {flight.destination.name} ({flight.destination.code})
+                {flight.ciudad_llegada}
               </p>
-              <p className="text-sm text-gray-600">{flight.destination.country}</p>
             </div>
           </CardContent>
         </Card>
@@ -111,7 +148,7 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Fecha:</span>
               <span className="text-gray-800">
-                {new Date(flight.departureDate).toLocaleDateString('es-ES', {
+                {departureDate.toLocaleDateString('es-ES', {
                   weekday: 'long',
                   year: 'numeric',
                   month: 'long',
@@ -122,17 +159,17 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Salida:</span>
-              <span className="text-gray-800">{flight.departureTime}</span>
+              <span className="text-gray-800">{departureDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Llegada:</span>
-              <span className="text-gray-800">{flight.arrivalTime}</span>
+              <span className="text-gray-800">{arrivalDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Duración:</span>
-              <span className="text-gray-800">{flight.duration}</span>
+              <span className="text-gray-800">{durationHours}h {durationMinutes}m</span>
             </div>
           </CardContent>
         </Card>
@@ -147,23 +184,23 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total de Asientos:</span>
-              <span className="text-gray-800">{flight.totalSeats}</span>
+              <span className="text-gray-800">{flight.asientos_totales}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Disponibles:</span>
-              <span className="text-green-600">{flight.availableSeats}</span>
+              <span className="text-green-600">{flight.asientos_disponibles}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Ocupados:</span>
-              <span className="text-red-600">{flight.occupiedSeats}</span>
+              <span className="text-red-600">{flight.asientos_totales - flight.asientos_disponibles}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Tasa de Ocupación:</span>
               <span className="text-sky-600">
-                {Math.round(((flight.occupiedSeats + flight.reservedSeats) / flight.totalSeats) * 100)}%
+                {Math.round(((flight.asientos_totales - flight.asientos_disponibles) / flight.asientos_totales) * 100)}%
               </span>
             </div>
           </CardContent>
@@ -180,13 +217,13 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
         <CardContent className="space-y-4">
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Precio Base:</span>
-            <span className="text-2xl text-sky-600">€{flight.price}</span>
+            <span className="text-2xl text-sky-600">€{flight.precio_base}</span>
           </div>
           <Separator />
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Ingresos Estimados:</span>
             <span className="text-gray-800">
-              €{((flight.occupiedSeats + flight.reservedSeats) * flight.price).toFixed(2)}
+              €{((flight.asientos_totales - flight.asientos_disponibles) * flight.precio_base).toFixed(2)}
             </span>
           </div>
         </CardContent>
