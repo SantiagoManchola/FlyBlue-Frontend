@@ -14,7 +14,6 @@ export default function Luggage() {
   const [luggageTypes, setLuggageTypes] = useState<EquipajeResponse[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [demoMode, setDemoMode] = useState(false);
   const [formData, setFormData] = useState({
     tipo: '',
     descripcion: '',
@@ -85,63 +84,14 @@ export default function Luggage() {
         precio: precio
       };
       
-      console.log('📤 Luggage - Enviando equipaje:', equipajeData);
-      console.log('📤 Luggage - Tipos:', {
-        tipo: typeof equipajeData.tipo,
-        descripcion: typeof equipajeData.descripcion,
-        peso_maximo: typeof equipajeData.peso_maximo,
-        precio: typeof equipajeData.precio
-      });
-      console.log('📤 Luggage - Valores validados:', {
-        pesoMaximoValido: !isNaN(pesoMaximo) && pesoMaximo > 0,
-        precioValido: !isNaN(precio) && precio >= 0
-      });
-      
-      let response;
-      let isDemo = false;
-      
-      try {
-        response = await adminService.crearEquipaje(equipajeData);
-      } catch (backendError: any) {
-        if (backendError.response?.status === 500) {
-          console.warn('⚠️ Backend falló, activando modo demo');
-          setDemoMode(true);
-          isDemo = true;
-          // Simular respuesta exitosa en modo demo
-          response = {
-            message: 'Equipaje creado en modo demo (backend no disponible)',
-            id_equipaje: Date.now(),
-            tipo: equipajeData.tipo,
-            descripcion: equipajeData.descripcion,
-            peso_maximo: equipajeData.peso_maximo,
-            precio: equipajeData.precio
-          };
-          toast.warning('Modo demo activado: El backend tiene problemas. Los datos solo se guardan localmente.');
-        } else {
-          throw backendError;
-        }
-      }
+      const response = await adminService.crearEquipaje(equipajeData);
       
       console.log('✅ Equipaje creado:', response);
       
-      toast.success(`Equipaje ${response.tipo} creado exitosamente${isDemo ? ' (modo demo)' : ''}`);
+      toast.success(`Equipaje ${response.tipo} creado exitosamente`);
       setFormData({ tipo: '', descripcion: '', peso_maximo: '', precio: '' });
       setIsDialogOpen(false);
-      
-      // Si es modo demo, agregar directamente al estado local
-      if (isDemo) {
-        const nuevoEquipaje: EquipajeResponse = {
-          id_equipaje: response.id_equipaje,
-          tipo: response.tipo,
-          descripcion: response.descripcion,
-          peso_maximo: response.peso_maximo,
-          precio: response.precio
-        };
-        setLuggageTypes(prev => [...prev, nuevoEquipaje]);
-      } else {
-        // Si no es demo, recargar desde el backend
-        await loadLuggage();
-      }
+      await loadLuggage();
     } catch (error: any) {
       console.error('❌ Luggage - Error completo al crear equipaje:', error);
       console.error('❌ Luggage - Respuesta del error:', error.response?.data);
