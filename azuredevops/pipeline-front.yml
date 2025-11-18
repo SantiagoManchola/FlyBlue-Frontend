@@ -17,7 +17,7 @@ variables:
     value: '18.x'
   - name: buildDir
     value: 'dist'
-  - group: 'VG-FLYBLUE-FRONT'   # VARIABLE GROUP
+  - group: 'VG-FLYBLUE-FRONT'   # Variable Group correcto
 
 stages:
   - stage: BuildAndDeploy
@@ -28,44 +28,32 @@ stages:
       # JOB 1 → BUILD
       # =====================================================
       - job: Build
-        displayName: 'Build Frontend'
+        displayName: 'Build Frontend (Vite + React)'
         steps:
 
+          # Instalar Node
           - task: NodeTool@0
             inputs:
               versionSpec: '$(nodeVersion)'
             displayName: 'Instalar Node.js'
 
+          # Instalar dependencias
           - script: |
               npm install
             displayName: 'Instalar dependencias'
 
-          #  CREAR ARCHIVO .env.production SEGÚN LA RAMA
+          # Crear archivo .env.production dinámico
           - script: |
-              echo "Branch detectada: $(Build.SourceBranch)"
+              echo "VITE_API_URL=$(VITE_API_URL)" > .env.production
+              echo "VITE_API_BASE_URL=$(VITE_API_BASE_URL)" >> .env.production
+            displayName: "Crear archivo .env.production"
 
-              if [ "$(Build.SourceBranch)" = "refs/heads/dev" ]; then
-                echo ">>> Variables DEV"
-                echo "VITE_API_URL=$(VITE_API_URL_DEV)" > .env.production
-
-              elif [ "$(Build.SourceBranch)" = "refs/heads/test" ]; then
-                echo ">>> Variables TEST"
-                echo "VITE_API_URL=$(VITE_API_URL_TEST)" > .env.production
-
-              else
-                echo ">>> Variables MAIN"
-                echo "VITE_API_URL=$(VITE_API_URL_MAIN)" > .env.production
-              fi
-
-              echo "Archivo generado:"
-              cat .env.production
-            displayName: "Crear archivo .env.production con variables del entorno"
-
-          #  COMPILAR CON VITE USANDO ESAS VARIABLES
+          # Compilar
           - script: |
-              npm run build --mode production
+              npm run build
             displayName: 'Compilar con Vite'
 
+          # Publicar artefacto dist
           - task: PublishPipelineArtifact@1
             inputs:
               targetPath: '$(System.DefaultWorkingDirectory)/$(buildDir)'
@@ -80,27 +68,29 @@ stages:
         dependsOn: Build
         steps:
 
+          # Descargar artefacto dist/
           - download: current
             artifact: dist
 
-          # 🟦 SELECCIONA TOKEN CORRECTO
+          # Seleccionar TOKEN según rama
           - script: |
               echo "Branch detectada: $(Build.SourceBranch)"
 
               if [ "$(Build.SourceBranch)" = "refs/heads/dev" ]; then
-                echo ">>> Deploy a DEV"
+                echo ">>> Deploy hacia DEV"
                 echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_DEV)"
 
               elif [ "$(Build.SourceBranch)" = "refs/heads/test" ]; then
-                echo ">>> Deploy a TEST"
+                echo ">>> Deploy hacia TEST"
                 echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_TEST)"
 
               else
-                echo ">>> Deploy a MAIN"
+                echo ">>> Deploy hacia MAIN (Producción)"
                 echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_MAIN)"
               fi
             displayName: 'Seleccionar token según la rama'
 
+          # Deploy
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App'
             inputs:
