@@ -465,7 +465,10 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                       {onViewDetail && (
                         <Button
                           className="bg-sky-500 hover:bg-sky-600 w-full min-w-[180px] rounded-4xl"
-                          onClick={() => onViewDetail(flightId.toString())}
+                          onClick={() => {
+                            console.log('👁️ Ver Detalle clickeado - Flight ID:', flightId);
+                            onViewDetail(flightId.toString());
+                          }}
                         >
                           <Eye className="w-4 h-4 mr-2" />
                           Ver Detalle

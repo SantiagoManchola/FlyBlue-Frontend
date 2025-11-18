@@ -12,10 +12,22 @@ export const crearVuelo = async (data: VueloRequest): Promise<VueloCreateRespons
 export const obtenerVueloPorId = async (id_vuelo: number): Promise<VueloResponse> => {
   console.log('🔍 GET /vuelos/:id - ID solicitado:', id_vuelo);
   const endpoint = ENDPOINTS.PUBLIC.GET_VUELO_BY_ID(id_vuelo);
-  console.log('🔍 GET /vuelos/:id - Endpoint:', endpoint);
-  const res = await api.get(endpoint);
-  console.log('✅ GET /vuelos/:id - Respuesta:', res.data);
-  return res.data;
+  console.log('🔍 GET /vuelos/:id - Endpoint completo:', endpoint);
+  console.log('🔍 GET /vuelos/:id - Base URL:', api.defaults.baseURL);
+  console.log('🔍 GET /vuelos/:id - URL final:', `${api.defaults.baseURL}${endpoint}`);
+  
+  try {
+    const res = await api.get(endpoint);
+    console.log('✅ GET /vuelos/:id - Respuesta exitosa:', res.data);
+    console.log('✅ GET /vuelos/:id - Status:', res.status);
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ GET /vuelos/:id - Error:', error);
+    console.error('❌ GET /vuelos/:id - Status:', error.response?.status);
+    console.error('❌ GET /vuelos/:id - Response data:', error.response?.data);
+    console.error('❌ GET /vuelos/:id - Request URL:', error.config?.url);
+    throw error;
+  }
 };
 
 export const buscarVuelos = async (

@@ -57,6 +57,11 @@ export default function Luggage() {
       return;
     }
     
+    if (formData.descripcion.length > 20) {
+      toast.error('La descripción debe tener máximo 20 caracteres');
+      return;
+    }
+    
     const pesoMaximo = parseFloat(formData.peso_maximo);
     const precio = parseFloat(formData.precio);
     
@@ -198,15 +203,28 @@ export default function Luggage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
+                <Label htmlFor="description">
+                  Descripción 
+                  <span className="text-xs text-gray-500 ml-2">
+                    ({formData.descripcion.length}/20 caracteres)
+                  </span>
+                </Label>
                 <Textarea
                   id="description"
                   value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
-                  placeholder="Bolso pequeño o mochila"
+                  onChange={(e) => {
+                    if (e.target.value.length <= 20) {
+                      setFormData({ ...formData, descripcion: e.target.value });
+                    }
+                  }}
+                  placeholder="Máx 20 caracteres"
                   disabled={isLoading}
+                  maxLength={20}
                   required
                 />
+                {formData.descripcion.length >= 20 && (
+                  <p className="text-xs text-orange-500">Has alcanzado el límite de 20 caracteres</p>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

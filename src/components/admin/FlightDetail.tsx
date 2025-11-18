@@ -42,8 +42,20 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
       }
     } catch (error: any) {
       console.error('❌ FlightDetail - Error al cargar datos del vuelo:', error);
-      const errorMsg = error?.response?.data?.detail || 'Error al cargar la información del vuelo';
-      toast.error(errorMsg);
+      console.error('❌ FlightDetail - Status:', error?.response?.status);
+      console.error('❌ FlightDetail - Data:', error?.response?.data);
+      
+      let errorMsg = 'Error al cargar la información del vuelo';
+      
+      if (error?.response?.status === 500) {
+        errorMsg = `El backend tiene un error al obtener el vuelo con ID ${flightId}. El endpoint GET /vuelos/${flightId} devuelve Error 500. Este es un problema del servidor que necesita ser corregido.`;
+        console.error('💡 Solución: El backend debe corregir el endpoint GET /vuelos/{id_vuelo}');
+      } else if (error?.response?.data?.detail) {
+        errorMsg = error.response.data.detail;
+      }
+      
+      toast.error(errorMsg, { duration: 6000 });
+      setFlight(null);
     } finally {
       setIsLoading(false);
     }
@@ -59,8 +71,11 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
 
   if (!flight) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">No se encontró el vuelo</p>
+      <div className="text-center py-12 space-y-4">
+        <div className="text-6xl">✈️</div>
+        <p className="text-gray-700 font-semibold">No se pudo cargar el vuelo</p>
+        <p className="text-gray-500 text-sm">El backend tiene un error al obtener los detalles del vuelo.</p>
+        <p className="text-gray-400 text-xs">ID solicitado: {flightId}</p>
       </div>
     );
   }
