@@ -5,6 +5,7 @@ import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { User } from '../App';
+import { authService } from '../services/authService';
 
 type RegisterProps = {
   onRegister: (user: User) => void;
@@ -16,17 +17,43 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState<'admin' | 'client'>('client');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock register - in real app this would call an API
-    const newUser: User = {
-      id: Math.random().toString(),
-      name,
-      email,
-      role,
-    };
-    onRegister(newUser);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      // Primero registrar
+      await authService.registrar({
+        nombre: name,
+        correo: email,
+        contraseña: password,
+      });
+
+      // Luego hacer login automático
+      const response = await authService.login({
+        correo: email,
+        contraseña: password,
+      });
+
+      // Mapear la respuesta al tipo User
+      const user: User = {
+        id: response.id_usuario.toString(),
+        name: response.nombre,
+        email: response.correo,
+        role: response.rol === 'admin' ? 'admin' : 'client',
+      };
+
+      onRegister(user);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message || 'Error al registrarse');
+      console.error('Register error:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -37,6 +64,11 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-5">
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="name" className="text-gray-700">Nombre Completo</Label>
             <Input
@@ -47,6 +79,7 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
               onChange={(e) => setName(e.target.value)}
               className="h-11"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -59,6 +92,7 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
               onChange={(e) => setEmail(e.target.value)}
               className="h-11"
               required
+              disabled={isLoading}
             />
           </div>
           <div className="space-y-2">
@@ -71,28 +105,23 @@ export default function Register({ onRegister, onSwitchToLogin }: RegisterProps)
               onChange={(e) => setPassword(e.target.value)}
               className="h-11"
               required
+              disabled={isLoading}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="role" className="text-gray-700">Tipo de Usuario</Label>
-            <Select value={role} onValueChange={(value: 'admin' | 'client') => setRole(value)}>
-              <SelectTrigger className="h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="client">Cliente</SelectItem>
-                <SelectItem value="admin">Administrador</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button type="submit" className="w-full h-11 bg-sky-500 hover:bg-sky-600">
-            Registrarse
+          
+          <Button 
+            type="submit" 
+            className="w-full h-11 bg-sky-500 hover:bg-sky-600"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Registrando...' : 'Registrarse'}
           </Button>
           <div className="text-center pt-2">
             <button
               type="button"
               onClick={onSwitchToLogin}
               className="text-sm text-sky-600 hover:text-sky-700 hover:underline cursor-pointer"
+              disabled={isLoading}
             >
               ¿Ya tienes cuenta? Inicia sesión
             </button>

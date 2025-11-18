@@ -13,7 +13,10 @@ export interface RegistroRequest {
 }
 
 export interface RegistroResponse {
-  message: string;
+  id_usuario: number;
+  nombre: string;
+  correo: string;
+  // El registro NO devuelve token, solo después del login
 }
 
 export interface LoginRequest {
@@ -25,15 +28,14 @@ export interface LoginResponse {
   id_usuario: number;
   nombre: string;
   correo: string;
-  rol: string;
-  access_token: string;
-  token_type: string;
+  token: string; // ← El token viene aquí en la respuesta del login
 }
 
 export interface UsuarioResponse {
+  correo: string;
   id_usuario: number;
   nombre: string;
-  correo: string;
+  // Sin token en el /me endpoint
 }
 
 // Admin interfaces

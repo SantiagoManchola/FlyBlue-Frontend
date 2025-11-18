@@ -1,10 +1,15 @@
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
 
-  import { defineConfig } from 'vite';
-  import react from '@vitejs/plugin-react-swc';
-  import path from 'path';
-  import tailwindcss from '@tailwindcss/vite';
+export default defineConfig(async () => {
 
-  export default defineConfig({
+  // Lee las variables desde .env 
+  const env = loadEnv(process.cwd(), ''); // <-- con '' trae todas
+  const tailwindModule = await import('@tailwindcss/vite');
+  const tailwindcss = (tailwindModule && (tailwindModule.default ?? tailwindModule)) as any;
+
+  return {
     plugins: [react(), tailwindcss()],
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
@@ -57,5 +62,14 @@
     server: {
       port: 3000,
       open: true,
+      proxy: {
+        '/v1': {
+          target: env.VITE_API_URL,  // <-- ahora usa lo del .env
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path,
+        },
+      }
     },
-  });
+  };
+});
