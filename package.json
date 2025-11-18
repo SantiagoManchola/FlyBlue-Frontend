@@ -2,6 +2,7 @@
   "name": "Aerolínea Low Cost Web Vistas",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "@gsap/react": "^2.1.2",
     "@radix-ui/react-accordion": "^1.2.3",
