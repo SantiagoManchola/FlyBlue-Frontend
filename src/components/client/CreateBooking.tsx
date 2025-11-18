@@ -31,16 +31,32 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
   useEffect(() => {
     const cargarDatos = async () => {
       try {
-        const [flightData, asientosData, equipajesData] = await Promise.all([
-          obtenerVueloPorId(flightId),
-          obtenerAsientosVuelo(flightId),
-          obtenerEquipajes()
-        ]);
+        console.log('🔄 CreateBooking - Cargando datos para vuelo:', flightId);
+        
+        const flightData = await obtenerVueloPorId(flightId);
+        console.log('✅ CreateBooking - Vuelo cargado:', flightData);
         setFlight(flightData);
-        setAsientos(asientosData.asientos);
+        
+        const asientosData = await obtenerAsientosVuelo(flightId);
+        console.log('✅ CreateBooking - Respuesta asientos RAW:', asientosData);
+        console.log('✅ CreateBooking - asientosData.asientos:', asientosData.asientos);
+        console.log('✅ CreateBooking - Cantidad:', asientosData.asientos?.length);
+        
+        if (asientosData && asientosData.asientos) {
+          console.log('✅ CreateBooking - Asignando asientos al estado:', asientosData.asientos);
+          setAsientos(asientosData.asientos);
+        } else {
+          console.warn('⚠️ CreateBooking - No se encontró la propiedad asientos');
+          setAsientos([]);
+        }
+        
+        const equipajesData = await obtenerEquipajes();
+        console.log('✅ CreateBooking - Equipajes cargados:', equipajesData);
         setEquipajes(equipajesData);
+        
       } catch (error) {
-        console.error('Error al cargar datos:', error);
+        console.error('❌ CreateBooking - Error al cargar datos:', error);
+        setAsientos([]);
       } finally {
         setLoading(false);
       }
@@ -99,6 +115,10 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
     );
   }
 
+  console.log('🎨 CreateBooking RENDER - Estado de asientos:', asientos);
+  console.log('🎨 CreateBooking RENDER - Cantidad de asientos en render:', asientos.length);
+  console.log('🎨 CreateBooking RENDER - Primer asiento:', asientos[0]);
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       <div>
@@ -130,17 +150,24 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
               </div>
 
               {/* Airplane seats layout */}
-              <div className="max-w-md mx-auto">
-                {/* Cockpit */}
-                <div className="mb-4">
-                  <div className="bg-gradient-to-b from-sky-400 to-sky-300 rounded-t-full h-12 flex items-center justify-center">
-                    <Plane className="w-6 h-6 text-white" />
-                  </div>
+              {asientos.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Plane className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                  <p className="font-medium">No hay asientos disponibles</p>
+                  <p className="text-sm mt-2">Los asientos para este vuelo aún no han sido configurados</p>
                 </div>
+              ) : (
+                <div className="max-w-md mx-auto">
+                  {/* Cockpit */}
+                  <div className="mb-4">
+                    <div className="bg-gradient-to-b from-sky-400 to-sky-300 rounded-t-full h-12 flex items-center justify-center">
+                      <Plane className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
 
-                {/* Seats */}
-                <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
-                  {Array.from(new Set(asientos.map(a => a.fila))).sort((a, b) => a - b).map((rowNumber) => {
+                  {/* Seats */}
+                  <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
+                    {Array.from(new Set(asientos.map(a => a.fila))).sort((a, b) => a - b).map((rowNumber) => {
                     return (
                       <div key={rowNumber} className="flex items-center gap-2 justify-center">
                         <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
@@ -210,6 +237,7 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
                   })}
                 </div>
               </div>
+              )}
             </CardContent>
           </Card>
 

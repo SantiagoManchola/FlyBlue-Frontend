@@ -37,6 +37,7 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
 
   useEffect(() => {
     loadCities();
+    loadAllFlights();
   }, []);
 
   const loadCities = async () => {
@@ -46,6 +47,65 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
     } catch (error) {
       console.error('Error al cargar ciudades:', error);
       toast.error('Error al cargar las ciudades');
+    }
+  };
+
+  const loadAllFlights = async () => {
+    try {
+      console.log('🔄 Flights - Cargando todos los vuelos...');
+      setIsLoading(true);
+      const basicVuelos = await adminService.obtenerTodosLosVuelos();
+      console.log('✅ Flights - Vuelos básicos cargados:', basicVuelos.length);
+      
+      // Para cada vuelo, obtener sus detalles completos y asientos
+      const vuelosConDetalles = await Promise.all(
+        basicVuelos.map(async (vuelo) => {
+          try {
+            const vueloId = (vuelo as any).id_vuelo || (vuelo as any).id;
+            if (!vueloId) {
+              console.warn('⚠️ Vuelo sin ID:', vuelo);
+              return vuelo;
+            }
+            
+            console.log(`🔍 Obteniendo detalles del vuelo ${vueloId}...`);
+            
+            // Llamar a ambos endpoints en paralelo
+            const [detalles, asientos] = await Promise.all([
+              adminService.obtenerVueloPorId(vueloId),
+              adminService.obtenerAsientosVuelo(vueloId)
+            ]);
+            
+            console.log(`✅ Vuelo ${vueloId} - Detalles y asientos obtenidos`);
+            
+            // Combinar la información
+            return {
+              ...detalles,
+              asientos: asientos.asientos,
+              total_asientos: asientos.total_asientos || asientos.asientos?.length || 0
+            };
+          } catch (error) {
+            console.error(`❌ Error al cargar detalles del vuelo:`, error);
+            // Si falla, retornar el vuelo básico
+            return vuelo;
+          }
+        })
+      );
+      
+      console.log('✅ Flights - Todos los vuelos con detalles cargados:', vuelosConDetalles);
+      
+      // Ordenar por fecha de salida (más recientes primero)
+      const vuelosOrdenados = vuelosConDetalles.sort((a, b) => {
+        const fechaA = new Date(a.fecha_salida).getTime();
+        const fechaB = new Date(b.fecha_salida).getTime();
+        return fechaA - fechaB; // Orden ascendente (próximos vuelos primero)
+      });
+      
+      setFlights(vuelosOrdenados);
+    } catch (error) {
+      console.error('❌ Flights - Error al cargar vuelos:', error);
+      toast.error('Error al cargar los vuelos');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -73,6 +133,16 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
     } finally {
       setIsSearching(false);
     }
+  };
+
+  const handleClearSearch = async () => {
+    console.log('🔄 Flights - Limpiando búsqueda y cargando todos los vuelos...');
+    setSearchParams({
+      origen: '',
+      destino: '',
+      fecha: ''
+    });
+    await loadAllFlights();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -364,10 +434,10 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                   disabled={isSearching}
                 />
               </div>
-              <div className="flex items-end">
+              <div className="flex items-end gap-2">
                 <Button 
                   onClick={handleSearch} 
-                  className="w-full bg-sky-500 hover:bg-sky-600"
+                  className="flex-1 bg-sky-500 hover:bg-sky-600"
                   disabled={isSearching}
                 >
                   {isSearching ? (
@@ -382,15 +452,24 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                     </>
                   )}
                 </Button>
+                <Button
+                  onClick={handleClearSearch}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isSearching || isLoading}
+                >
+                  Ver Todos
+                </Button>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {isSearching ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-sky-500" />
+      {(isSearching || isLoading) ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500 mb-3" />
+          <p className="text-gray-600">{isSearching ? 'Buscando vuelos...' : 'Cargando vuelos...'}</p>
         </div>
       ) : flights.length === 0 ? (
         <div className="text-center py-12 text-gray-500">

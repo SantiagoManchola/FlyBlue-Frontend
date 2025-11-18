@@ -42,24 +42,38 @@ export const buscarVuelos = async (
 };
 
 export const obtenerAsientosVuelo = async (id_vuelo: number): Promise<AsientosResponse> => {
-  const res = await api.get(ENDPOINTS.PUBLIC.GET_ASIENTOS_BY_VUELO(id_vuelo));
-  return res.data;
+  console.log('🪑 GET /vuelos/:id/asientos - ID vuelo:', id_vuelo);
+  const endpoint = ENDPOINTS.PUBLIC.GET_ASIENTOS_BY_VUELO(id_vuelo);
+  console.log('🪑 GET /vuelos/:id/asientos - Endpoint:', endpoint);
+  console.log('🪑 GET /vuelos/:id/asientos - URL completa:', `${api.defaults.baseURL}${endpoint}`);
+  
+  try {
+    const res = await api.get(endpoint);
+    console.log('✅ GET /vuelos/:id/asientos - Respuesta completa:', res);
+    console.log('✅ GET /vuelos/:id/asientos - res.data:', res.data);
+    console.log('✅ GET /vuelos/:id/asientos - Tipo de res.data:', typeof res.data);
+    console.log('✅ GET /vuelos/:id/asientos - Es array?:', Array.isArray(res.data));
+    console.log('✅ GET /vuelos/:id/asientos - Keys de res.data:', Object.keys(res.data || {}));
+    return res.data;
+  } catch (error: any) {
+    console.error('❌ GET /vuelos/:id/asientos - Error:', error);
+    console.error('❌ GET /vuelos/:id/asientos - Status:', error.response?.status);
+    console.error('❌ GET /vuelos/:id/asientos - Response:', error.response?.data);
+    throw error;
+  }
 };
 
 export const obtenerTodosLosVuelos = async (): Promise<VueloResponse[]> => {
   try {
-    console.log('📋 GET /vuelos - Obteniendo todos los vuelos...');
-    
-    // NOTA: El backend requiere parámetros (origen, destino, fecha) pero no hay endpoint
-    // para listar todos los vuelos sin filtros. Por ahora retornamos array vacío.
-    // Los vuelos creados pueden verse individualmente por ID.
-    console.warn('⚠️ El endpoint /vuelos requiere parámetros obligatorios. No se pueden listar todos los vuelos.');
-    console.info('💡 Los vuelos se pueden ver individualmente usando su ID.');
-    
-    return [];
+    console.log('📋 GET /vuelos - Obteniendo todos los vuelos sin filtros...');
+    const res = await api.get(ENDPOINTS.PUBLIC.GET_VUELOS);
+    console.log('✅ GET /vuelos - Vuelos obtenidos:', res.data);
+    console.log('✅ GET /vuelos - Total de vuelos:', res.data.length);
+    return res.data;
   } catch (error: any) {
-    console.error('❌ Error al obtener vuelos:', error);
-    console.error('❌ Error detallado:', error.response?.data);
+    console.error('❌ GET /vuelos - Error al obtener vuelos:', error);
+    console.error('❌ GET /vuelos - Status:', error.response?.status);
+    console.error('❌ GET /vuelos - Detalle:', error.response?.data);
     return [];
   }
 };

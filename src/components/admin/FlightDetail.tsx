@@ -80,17 +80,40 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
     );
   }
 
+  // Datos de fechas y horas desde el backend
+  console.log('📅 FlightDetail - fecha_salida del backend:', flight.fecha_salida);
+  console.log('📅 FlightDetail - fecha_llegada del backend:', flight.fecha_llegada);
+  
   const departureDate = new Date(flight.fecha_salida);
   const arrivalDate = new Date(flight.fecha_llegada);
+  
+  console.log('📅 FlightDetail - Fecha salida parseada:', departureDate.toISOString());
+  console.log('📅 FlightDetail - Fecha llegada parseada:', arrivalDate.toISOString());
+  
   const duration = Math.round((arrivalDate.getTime() - departureDate.getTime()) / (1000 * 60));
   const durationHours = Math.floor(duration / 60);
   const durationMinutes = duration % 60;
 
-  const rows = 20;
-  const seatsPerRow = ['A', 'B', 'C', 'D', 'E'];
-  const occupiedSeats = asientos
-    .filter(a => !a.disponible)
-    .map(a => `${a.fila}${a.columna}`);
+  // Calcular estadísticas de asientos basadas en datos reales del backend
+  const totalAsientos = asientos.length;
+  const asientosDisponibles = asientos.filter(a => a.disponible).length;
+  const asientosOcupados = asientos.filter(a => !a.disponible).length;
+  const tasaOcupacion = totalAsientos > 0 ? Math.round((asientosOcupados / totalAsientos) * 100) : 0;
+  const ingresosEstimados = asientosOcupados * flight.precio_base;
+
+  // Calcular filas y columnas desde los asientos reales del backend
+  const filasReales = asientos.length > 0 ? Math.max(...asientos.map(a => a.fila)) : 0;
+  const columnasReales = asientos.length > 0 
+    ? Array.from(new Set(asientos.map(a => a.columna))).sort() 
+    : [];
+  
+  console.log('🪑 FlightDetail - Total asientos del backend:', asientos.length);
+  console.log('🪑 FlightDetail - Filas detectadas:', filasReales);
+  console.log('🪑 FlightDetail - Columnas detectadas:', columnasReales);
+  
+  // Usar datos del backend o valores por defecto si no hay asientos
+  const rows = filasReales || 20;
+  const seatsPerRow = columnasReales.length > 0 ? columnasReales : ['A', 'B', 'C', 'D', 'E'];
 
   return (
     <div className="space-y-6">
@@ -111,19 +134,14 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Número de Vuelo:</span>
-              <span className="text-gray-800">{flight.codigo}</span>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">Código de Vuelo</p>
+              <p className="text-gray-800 font-semibold">{flight.codigo}</p>
             </div>
             <Separator />
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Aeronave:</span>
-              <span className="text-gray-800">Airbus A320</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between items-center">
-              <span className="text-gray-600">Estado:</span>
-              <Badge className="bg-blue-100 text-blue-700">Programado</Badge>
+            <div>
+              <p className="text-sm text-gray-500 mb-1">ID del Sistema</p>
+              <p className="text-gray-800">{(flight as any).id_vuelo || (flight as any).id}</p>
             </div>
           </CardContent>
         </Card>
@@ -199,23 +217,23 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           <CardContent className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total de Asientos:</span>
-              <span className="text-gray-800">{flight.asientos_totales}</span>
+              <span className="text-gray-800">{totalAsientos}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Disponibles:</span>
-              <span className="text-green-600">{flight.asientos_disponibles}</span>
+              <span className="text-green-600">{asientosDisponibles}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Ocupados:</span>
-              <span className="text-red-600">{flight.asientos_totales - flight.asientos_disponibles}</span>
+              <span className="text-red-600">{asientosOcupados}</span>
             </div>
             <Separator />
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Tasa de Ocupación:</span>
               <span className="text-sky-600">
-                {Math.round(((flight.asientos_totales - flight.asientos_disponibles) / flight.asientos_totales) * 100)}%
+                {tasaOcupacion}%
               </span>
             </div>
           </CardContent>
@@ -238,7 +256,7 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           <div className="flex justify-between items-center">
             <span className="text-gray-600">Ingresos Estimados:</span>
             <span className="text-gray-800">
-              €{((flight.asientos_totales - flight.asientos_disponibles) * flight.precio_base).toFixed(2)}
+              €{ingresosEstimados.toFixed(2)}
             </span>
           </div>
         </CardContent>
@@ -256,11 +274,11 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
           <div className="mb-6 flex justify-center gap-6 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 border-2 border-gray-300 rounded"></div>
-              <span className="text-gray-600">Disponible ({100 - occupiedSeats.length})</span>
+              <span className="text-gray-600">Disponible ({asientosDisponibles})</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-6 h-6 bg-red-400 rounded"></div>
-              <span className="text-gray-600">Ocupado ({occupiedSeats.length})</span>
+              <span className="text-gray-600">Ocupado ({asientosOcupados})</span>
             </div>
           </div>
 
@@ -285,7 +303,8 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
                     <div className="flex gap-1">
                       {seatsPerRow.slice(0, 2).map((letter) => {
                         const seatId = `${rowNumber}${letter}`;
-                        const isOccupied = occupiedSeats.includes(seatId);
+                        const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                        const isOccupied = asiento ? !asiento.disponible : false;
                         
                         return (
                           <div
@@ -310,7 +329,8 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
                     <div className="flex gap-1">
                       {seatsPerRow.slice(2).map((letter) => {
                         const seatId = `${rowNumber}${letter}`;
-                        const isOccupied = occupiedSeats.includes(seatId);
+                        const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                        const isOccupied = asiento ? !asiento.disponible : false;
                         
                         return (
                           <div
