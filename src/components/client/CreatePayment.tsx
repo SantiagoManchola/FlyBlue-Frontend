@@ -7,6 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
 
+const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
+const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
+
+declare global {
+  interface Window {
+    paypal: any;
+  }
+}
+
 type CreatePaymentProps = {
   bookingId: string;
 };
@@ -40,127 +49,58 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
-    // Simulate payment processing with sandbox behavior
-    // Card ending in "0000" will fail, others succeed
-    setTimeout(() => {
-      const lastFourDigits = formData.cardNumber.replace(/\s/g, '').slice(-4);
-      
-      if (lastFourDigits === '0000') {
-        setPaymentFailed(true);
-        setIsProcessing(false);
-      } else {
-        setPaymentComplete(true);
-        setIsProcessing(false);
-      }
-    }, 2000);
-  };
-
-  const handleRetryPayment = () => {
     setPaymentFailed(false);
-    setFormData({
-      cardNumber: '',
-      cardName: '',
-      expiryDate: '',
-      cvv: '',
-    });
+
+    try {
+
+
+
+      // 2. Crear un formulario HTML oculto que apunta a PayPal Sandbox
+      const form = document.createElement('form');
+      form.setAttribute('method', 'POST');
+      form.setAttribute('action', PAYPAL_SANDBOX_URL);
+
+      // Función auxiliar para añadir campos al formulario
+      const addField = (name: string, value: string) => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'hidden');
+        input.setAttribute('name', name);
+        input.setAttribute('value', value);
+        form.appendChild(input);
+      };
+
+      // 3. Campos mínimos para un pago simple (_xclick)
+      addField('cmd', '_xclick'); // tipo de operación
+      addField('business', PAYPAL_BUSINESS_EMAIL); // a quién se le paga
+      addField(
+        'item_name',
+        `Reserva ${booking.bookingNumber} - Vuelo ${booking.flightNumber}`
+      ); // descripción
+      addField('amount', booking.totalPrice.toFixed(2)); // monto
+      addField('currency_code', 'EUR'); // moneda
+
+      // 4. URLs a donde PayPal redirige después de pagar o cancelar
+      const baseUrl = window.location.origin; // ej: http://localhost:5173
+
+      addField('return', `${baseUrl}/payment-success`);
+
+      addField(
+        "cancel_return",
+        `${baseUrl}/payment-cancel?paymentId=ERR-${Date.now()}`
+      );;
+
+      // 5. Campo opcional para que tú sepas qué reserva era (no se usa en este demo)
+      addField('custom', bookingId);
+
+      // 6. Añadir el formulario al DOM y enviarlo
+      document.body.appendChild(form);
+      form.submit();
+    } catch (error) {
+      console.error('Error al redirigir a PayPal:', error);
+      setPaymentFailed(true);
+      setIsProcessing(false);
+    }
   };
-
-  if (paymentFailed) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-red-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <X className="w-10 h-10 text-red-600" />
-            </div>
-            <h2 className="text-red-600 mb-2">Pago Rechazado</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago no pudo ser procesado. La reserva ha sido cancelada.
-            </p>
-            <div className="bg-red-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Código de Error</p>
-              <p className="text-2xl text-red-600">ERR-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <Alert className="mb-6 border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                La tarjeta ha sido rechazada. Por favor, verifica los datos o intenta con otra tarjeta.
-              </AlertDescription>
-            </Alert>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto:</span>
-                <span className="text-gray-800">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <Button 
-              onClick={handleRetryPayment}
-              className="w-full bg-sky-500 hover:bg-sky-600"
-            >
-              Intentar Nuevamente
-            </Button>
-            <p className="text-xs text-gray-500 mt-4">
-              Sandbox: Usa una tarjeta que NO termine en 0000 para simular un pago exitoso
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (paymentComplete) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-green-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-green-600 mb-2">¡Pago Exitoso!</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago ha sido procesado correctamente. Tu vuelo está confirmado.
-            </p>
-            <div className="bg-green-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Número de Transacción</p>
-              <p className="text-2xl text-green-600">TRX-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Pasajero:</span>
-                <span className="text-gray-800">{booking.passengerName}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Pagado:</span>
-                <span className="text-green-600">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">
-              Hemos enviado tu tarjeta de embarque por correo electrónico.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
