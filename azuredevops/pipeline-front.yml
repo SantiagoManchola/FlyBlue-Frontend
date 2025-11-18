@@ -17,7 +17,7 @@ variables:
     value: '18.x'
   - name: buildDir
     value: 'dist'
-  - group: 'VG-FLYBLUE-FRONT'   # 👈 NOMBRE REAL DE TU VARIABLE GROUP
+  - group: 'VG-FLYBLUE-FRONT'   # VARIABLE GROUP CORRECTO
 
 stages:
   - stage: BuildAndDeploy
@@ -61,13 +61,13 @@ stages:
             artifact: dist
 
           - script: |
-              echo "Branch detectada: $(Build.SourceBranchName)"
+              echo "Branch detectada: $(Build.SourceBranch)"
 
-              if [ "$(Build.SourceBranchName)" = "dev" ]; then
+              if [ "$(Build.SourceBranch)" = "refs/heads/dev" ]; then
                 echo ">>> Deploy hacia DEV"
                 echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_DEV)"
 
-              elif [ "$(Build.SourceBranchName)" = "test" ]; then
+              elif [ "$(Build.SourceBranch)" = "refs/heads/test" ]; then
                 echo ">>> Deploy hacia TEST"
                 echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_TEST)"
 
@@ -83,3 +83,4 @@ stages:
               app_location: '/'
               output_location: 'dist'
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
+
