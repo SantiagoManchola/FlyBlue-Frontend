@@ -1,0 +1,79 @@
+## =========================================================
+# PIPELINE ÚNICO CI/CD - FLYBLUE FRONTEND (VITE + REACT)
+# =========================================================
+# Repositorio: GitHub
+# Escucha ramas: dev, test, main
+# Fases:
+#   - Job Build: Compila la app Vite
+#   - Job Deploy: Despliega a Azure Static Web App
+# =========================================================
+
+trigger:
+  branches:
+    include:
+      - dev
+      - test
+      - main
+
+pool:
+  vmImage: "ubuntu-latest"
+
+variables:
+  nodeVersion: "18.x"
+  buildDir: "dist"
+
+stages:
+  - stage: BuildAndDeploy
+    displayName: "Build & Deploy Frontend"
+    jobs:
+      - job: Build
+        displayName: "Build Frontend (Vite + React)"
+        steps:
+          - task: NodeTool@0
+            inputs:
+              versionSpec: "$(nodeVersion)"
+            displayName: "Instalar Node.js $(nodeVersion)"
+
+          - script: |
+              npm install
+            displayName: "Instalar dependencias"
+
+          - script: |
+              npm run build
+            displayName: "Compilar aplicación Vite"
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: "$(System.DefaultWorkingDirectory)/$(buildDir)"
+              artifact: "dist"
+            displayName: "Publicar artefacto del build"
+
+      - job: Deploy
+        displayName: "Desplegar a Azure Static Web App"
+        dependsOn: Build
+        steps:
+          - download: current
+            artifact: dist
+
+          # 🔹 Determinar entorno según la rama
+          - script: |
+              echo "Branch: $(Build.SourceBranchName)"
+              if [ "$(Build.SourceBranchName)" = "dev" ]; then
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_DEV)"
+                echo "##vso[task.setvariable variable=DEPLOY_ENV]DEV"
+              elif [ "$(Build.SourceBranchName)" = "test" ]; then
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_TEST)"
+                echo "##vso[task.setvariable variable=DEPLOY_ENV]TEST"
+              else
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_MAIN)"
+                echo "##vso[task.setvariable variable=DEPLOY_ENV]MAIN"
+              fi
+            displayName: "Seleccionar token de entorno"
+
+          # 🔹 Despliegue directo a Static Web Apps
+          - task: AzureStaticWebApp@0
+            displayName: "Deploy to Azure Static Web App ($(DEPLOY_ENV))"
+            inputs:
+              app_location: "/"
+              output_location: "dist"
+              azure_static_web_apps_api_token: "$(DEPLOY_TOKEN)"
