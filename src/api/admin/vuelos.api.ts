@@ -41,6 +41,23 @@ export const buscarVuelos = async (
   return res.data;
 };
 
+export const buscarVuelosConFiltros = async (
+  filtros: { origen?: number; destino?: number; fecha?: string }
+): Promise<VueloBusquedaResponse[]> => {
+  console.log('🔍 buscarVuelosConFiltros - Filtros recibidos:', filtros);
+  
+  const params: any = {};
+  if (filtros.origen) params.origen = filtros.origen;
+  if (filtros.destino) params.destino = filtros.destino;
+  if (filtros.fecha) params.fecha = filtros.fecha;
+  
+  console.log('🔍 buscarVuelosConFiltros - Params enviados:', params);
+  
+  const res = await api.get(ENDPOINTS.PUBLIC.GET_VUELOS, { params });
+  console.log('✅ buscarVuelosConFiltros - Resultados:', res.data.length);
+  return res.data;
+};
+
 export const obtenerAsientosVuelo = async (id_vuelo: number): Promise<AsientosResponse> => {
   console.log('🪑 GET /vuelos/:id/asientos - ID vuelo:', id_vuelo);
   const endpoint = ENDPOINTS.PUBLIC.GET_ASIENTOS_BY_VUELO(id_vuelo);
@@ -67,9 +84,19 @@ export const obtenerTodosLosVuelos = async (): Promise<VueloResponse[]> => {
   try {
     console.log('📋 GET /vuelos - Obteniendo todos los vuelos sin filtros...');
     const res = await api.get(ENDPOINTS.PUBLIC.GET_VUELOS);
-    console.log('✅ GET /vuelos - Vuelos obtenidos:', res.data);
-    console.log('✅ GET /vuelos - Total de vuelos:', res.data.length);
-    return res.data;
+    console.log('✅ GET /vuelos - Vuelos obtenidos (raw):', res.data);
+    console.log('✅ GET /vuelos - Tipo de datos:', typeof res.data, Array.isArray(res.data));
+    
+    // Si el backend devuelve un objeto en lugar de un array, convertirlo
+    let vuelos = res.data;
+    if (!Array.isArray(res.data) && typeof res.data === 'object') {
+      console.log('⚠️ GET /vuelos - Backend devolvió objeto, convirtiendo a array...');
+      vuelos = Object.values(res.data);
+      console.log('✅ GET /vuelos - Array convertido:', vuelos);
+    }
+    
+    console.log('✅ GET /vuelos - Total de vuelos:', vuelos.length);
+    return vuelos;
   } catch (error: any) {
     console.error('❌ GET /vuelos - Error al obtener vuelos:', error);
     console.error('❌ GET /vuelos - Status:', error.response?.status);

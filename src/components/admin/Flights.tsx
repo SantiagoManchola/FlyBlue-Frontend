@@ -16,6 +16,7 @@ type FlightsProps = {
 
 export default function Flights({ onViewDetail }: FlightsProps = {}) {
   const [flights, setFlights] = useState<any[]>([]);
+  const [allFlights, setAllFlights] = useState<any[]>([]); // Guardar todos los vuelos
   const [cities, setCities] = useState<CiudadResponse[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -54,53 +55,13 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
     try {
       console.log('🔄 Flights - Cargando todos los vuelos...');
       setIsLoading(true);
-      const basicVuelos = await adminService.obtenerTodosLosVuelos();
-      console.log('✅ Flights - Vuelos básicos cargados:', basicVuelos.length);
+      const vuelos = await adminService.obtenerTodosLosVuelos();
+      console.log('✅ Flights - Vuelos cargados:', vuelos.length);
+      console.log('✅ Flights - Vuelos:', vuelos);
       
-      // Para cada vuelo, obtener sus detalles completos y asientos
-      const vuelosConDetalles = await Promise.all(
-        basicVuelos.map(async (vuelo) => {
-          try {
-            const vueloId = (vuelo as any).id_vuelo || (vuelo as any).id;
-            if (!vueloId) {
-              console.warn('⚠️ Vuelo sin ID:', vuelo);
-              return vuelo;
-            }
-            
-            console.log(`🔍 Obteniendo detalles del vuelo ${vueloId}...`);
-            
-            // Llamar a ambos endpoints en paralelo
-            const [detalles, asientos] = await Promise.all([
-              adminService.obtenerVueloPorId(vueloId),
-              adminService.obtenerAsientosVuelo(vueloId)
-            ]);
-            
-            console.log(`✅ Vuelo ${vueloId} - Detalles y asientos obtenidos`);
-            
-            // Combinar la información
-            return {
-              ...detalles,
-              asientos: asientos.asientos,
-              total_asientos: asientos.total_asientos || asientos.asientos?.length || 0
-            };
-          } catch (error) {
-            console.error(`❌ Error al cargar detalles del vuelo:`, error);
-            // Si falla, retornar el vuelo básico
-            return vuelo;
-          }
-        })
-      );
-      
-      console.log('✅ Flights - Todos los vuelos con detalles cargados:', vuelosConDetalles);
-      
-      // Ordenar por fecha de salida (más recientes primero)
-      const vuelosOrdenados = vuelosConDetalles.sort((a, b) => {
-        const fechaA = new Date(a.fecha_salida).getTime();
-        const fechaB = new Date(b.fecha_salida).getTime();
-        return fechaA - fechaB; // Orden ascendente (próximos vuelos primero)
-      });
-      
-      setFlights(vuelosOrdenados);
+      // Usar los vuelos directamente como vienen del backend
+      setAllFlights(vuelos);
+      setFlights(vuelos);
     } catch (error) {
       console.error('❌ Flights - Error al cargar vuelos:', error);
       toast.error('Error al cargar los vuelos');
@@ -110,39 +71,58 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
   };
 
   const handleSearch = async () => {
-    if (!searchParams.origen || !searchParams.destino || !searchParams.fecha) {
-      toast.error('Por favor completa todos los campos de búsqueda');
+    if (!searchParams.origen && !searchParams.destino && !searchParams.fecha) {
+      toast.info('Por favor selecciona al menos un criterio de búsqueda');
       return;
     }
 
     try {
       setIsSearching(true);
-      const data = await adminService.buscarVuelos(
-        parseInt(searchParams.origen),
-        parseInt(searchParams.destino),
-        searchParams.fecha
-      );
-      console.log('📊 Vuelos encontrados:', data);
-      setFlights(data);
-      if (data.length === 0) {
+      console.log('🔍 Filtrando con:', searchParams);
+      
+      // Preparar filtros para enviar al backend
+      const filtros: { origen?: number; destino?: number; fecha?: string } = {};
+      
+      if (searchParams.origen) {
+        filtros.origen = parseInt(searchParams.origen);
+      }
+      if (searchParams.destino) {
+        filtros.destino = parseInt(searchParams.destino);
+      }
+      if (searchParams.fecha) {
+        filtros.fecha = searchParams.fecha;
+      }
+      
+      console.log('🔍 Enviando filtros al backend:', filtros);
+      
+      // Llamar al backend con los filtros
+      const vuelosFiltrados = await adminService.buscarVuelosConFiltros(filtros);
+      
+      console.log(`✅ Backend devolvió ${vuelosFiltrados.length} vuelos`);
+      setFlights(vuelosFiltrados);
+      
+      if (vuelosFiltrados.length === 0) {
         toast.info('No se encontraron vuelos con esos criterios');
+      } else {
+        toast.success(`Se encontraron ${vuelosFiltrados.length} vuelo(s)`);
       }
     } catch (error: any) {
-      console.error('❌ Error al buscar vuelos:', error);
-      toast.error('Error al buscar vuelos');
+      console.error('❌ Error al filtrar vuelos:', error);
+      toast.error('Error al filtrar vuelos');
     } finally {
       setIsSearching(false);
     }
   };
 
-  const handleClearSearch = async () => {
-    console.log('🔄 Flights - Limpiando búsqueda y cargando todos los vuelos...');
+  const handleClearSearch = () => {
+    console.log('🔄 Flights - Limpiando filtros y mostrando todos los vuelos...');
     setSearchParams({
       origen: '',
       destino: '',
       fecha: ''
     });
-    await loadAllFlights();
+    setFlights(allFlights); // Restaurar todos los vuelos
+    toast.success('Mostrando todos los vuelos');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -383,18 +363,19 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
           <div className="space-y-4">
             <div className="flex items-center gap-2 mb-4">
               <Search className="w-5 h-5 text-sky-500" />
-              <h3 className="text-lg font-semibold text-gray-800">Buscar Vuelos</h3>
+              <h3 className="text-lg font-semibold text-gray-800">Filtrar Vuelos</h3>
+              <span className="text-sm text-gray-500">(Todos los campos son opcionales)</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="searchOrigin">Origen <span className="text-red-500">*</span></Label>
+                <Label htmlFor="searchOrigin">Origen</Label>
                 <Select 
                   value={searchParams.origen} 
                   onValueChange={(value) => setSearchParams({ ...searchParams, origen: value })}
                   disabled={isSearching}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona origen" />
+                    <SelectValue placeholder="Todos los orígenes" />
                   </SelectTrigger>
                   <SelectContent>
                     {cities.map((city) => (
@@ -406,14 +387,14 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="searchDestination">Destino <span className="text-red-500">*</span></Label>
+                <Label htmlFor="searchDestination">Destino</Label>
                 <Select 
                   value={searchParams.destino} 
                   onValueChange={(value) => setSearchParams({ ...searchParams, destino: value })}
                   disabled={isSearching}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selecciona destino" />
+                    <SelectValue placeholder="Todos los destinos" />
                   </SelectTrigger>
                   <SelectContent>
                     {cities.map((city) => (
@@ -425,13 +406,14 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="searchDate">Fecha <span className="text-red-500">*</span></Label>
+                <Label htmlFor="searchDate">Fecha</Label>
                 <Input
                   id="searchDate"
                   type="date"
                   value={searchParams.fecha}
                   onChange={(e) => setSearchParams({ ...searchParams, fecha: e.target.value })}
                   disabled={isSearching}
+                  placeholder="Todas las fechas"
                 />
               </div>
               <div className="flex items-end gap-2">
@@ -443,12 +425,12 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
                   {isSearching ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Buscando...
+                      Filtrando...
                     </>
                   ) : (
                     <>
                       <Search className="w-4 h-4 mr-2" />
-                      Buscar
+                      Filtrar
                     </>
                   )}
                 </Button>
