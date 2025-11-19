@@ -90,6 +90,23 @@ stages:
           - download: current
             artifact: dist
 
+          # Verificar contenido del artefacto
+          - script: |
+              echo "📦 Contenido de Pipeline.Workspace:"
+              ls -la $(Pipeline.Workspace)
+              echo ""
+              echo "📁 Contenido de dist artifact:"
+              ls -la $(Pipeline.Workspace)/dist
+            displayName: 'Verificar estructura de artefactos'
+
+          # Copiar artefacto al directorio de trabajo
+          - script: |
+              mkdir -p $(System.DefaultWorkingDirectory)/dist-deploy
+              cp -r $(Pipeline.Workspace)/dist/* $(System.DefaultWorkingDirectory)/dist-deploy/
+              echo "📦 Archivos copiados a dist-deploy:"
+              ls -la $(System.DefaultWorkingDirectory)/dist-deploy
+            displayName: 'Preparar artefactos para deploy'
+
           # Seleccionar TOKEN según rama
           - script: |
               echo "Branch detectada: $(Build.SourceBranch)"
@@ -108,10 +125,10 @@ stages:
               fi
             displayName: 'Seleccionar token según la rama'
 
-          # Deploy
+          # Deploy con artefacto pre-compilado
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App'
             inputs:
-              app_location: '/'
-              output_location: 'dist'
+              app_location: 'dist-deploy'
+              skip_app_build: true
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
