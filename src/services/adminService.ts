@@ -6,6 +6,8 @@ import {
   crearVuelo,
   obtenerVueloPorId,
   buscarVuelos,
+  obtenerTodosLosVuelos,
+  buscarVuelosConFiltros,
 } from "../api/admin/vuelos.api";
 import {
   crearEquipaje,
@@ -94,6 +96,26 @@ export const adminService = {
       return await buscarVuelos(origen, destino, fecha);
     } catch (error) {
       console.error("Error al buscar vuelos:", error);
+      throw error;
+    }
+  },
+
+  obtenerTodosLosVuelos: async () => {
+    try {
+      return await obtenerTodosLosVuelos();
+    } catch (error) {
+      console.error("Error al obtener todos los vuelos:", error);
+      throw error;
+    }
+  },
+
+  buscarVuelosConFiltros: async (
+    filtros: { origen?: number; destino?: number; fecha?: string }
+  ) => {
+    try {
+      return await buscarVuelosConFiltros(filtros);
+    } catch (error) {
+      console.error("Error al buscar vuelos con filtros:", error);
       throw error;
     }
   },
