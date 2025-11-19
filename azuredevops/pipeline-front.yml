@@ -99,6 +99,14 @@ stages:
               ls -la $(Pipeline.Workspace)/dist
             displayName: 'Verificar estructura de artefactos'
 
+          # Copiar artefacto al directorio de trabajo
+          - script: |
+              mkdir -p $(System.DefaultWorkingDirectory)/dist-deploy
+              cp -r $(Pipeline.Workspace)/dist/* $(System.DefaultWorkingDirectory)/dist-deploy/
+              echo "📦 Archivos copiados a dist-deploy:"
+              ls -la $(System.DefaultWorkingDirectory)/dist-deploy
+            displayName: 'Preparar artefactos para deploy'
+
           # Seleccionar TOKEN según rama
           - script: |
               echo "Branch detectada: $(Build.SourceBranch)"
@@ -121,6 +129,6 @@ stages:
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App'
             inputs:
-              app_location: '$(Pipeline.Workspace)/dist'
+              app_location: 'dist-deploy'
               skip_app_build: true
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
