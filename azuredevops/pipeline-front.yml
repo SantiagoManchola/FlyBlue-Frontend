@@ -90,6 +90,15 @@ stages:
           - download: current
             artifact: dist
 
+          # Verificar contenido del artefacto
+          - script: |
+              echo "📦 Contenido de Pipeline.Workspace:"
+              ls -la $(Pipeline.Workspace)
+              echo ""
+              echo "📁 Contenido de dist artifact:"
+              ls -la $(Pipeline.Workspace)/dist
+            displayName: 'Verificar estructura de artefactos'
+
           # Seleccionar TOKEN según rama
           - script: |
               echo "Branch detectada: $(Build.SourceBranch)"
