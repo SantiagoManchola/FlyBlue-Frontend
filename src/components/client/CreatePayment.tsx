@@ -41,9 +41,9 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     departureTime: '08:00',
     passengerName: 'Juan Pérez',
     seat: '12A',
-    flightPrice: 49.99,
+    flightPrice: 200000,
     luggagePrice: 0,
-    totalPrice: 49.99,
+    totalPrice: 200000,
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -76,8 +76,11 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
         'item_name',
         `Reserva ${booking.bookingNumber} - Vuelo ${booking.flightNumber}`
       ); // descripción
-      addField('amount', booking.totalPrice.toFixed(2)); // monto
-      addField('currency_code', 'EUR'); // moneda
+      const COP_TO_EUR_RATE = 1 / 4500; // 1 COP a EUR aprox
+      const amountEur = (booking.totalPrice * COP_TO_EUR_RATE).toFixed(2);
+
+      addField('amount', amountEur);      // monto en EUR
+      addField('currency_code', 'EUR');
 
       // 4. URLs a donde PayPal redirige después de pagar o cancelar
       const baseUrl = window.location.origin; // ej: http://localhost:5173
@@ -190,7 +193,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
 
                 <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600">
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pagar €{booking.totalPrice}
+                  Pagar COP {booking.totalPrice.toLocaleString('es-CO')}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">
@@ -238,19 +241,19 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Vuelo:</span>
-                  <span className="text-gray-800">€{booking.flightPrice}</span>
+                  <span className="text-gray-800">COP {booking.flightPrice}</span>
                 </div>
                 {booking.luggagePrice > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Equipaje:</span>
-                    <span className="text-gray-800">€{booking.luggagePrice}</span>
+                    <span className="text-gray-800">COP {booking.luggagePrice}</span>
                   </div>
                 )}
               </div>
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-gray-800">Total:</span>
-                <span className="text-2xl text-sky-600">€{booking.totalPrice}</span>
+                <span className="text-gray-800">COP {booking.flightPrice.toLocaleString('es-CO')}</span>
               </div>
             </CardContent>
           </Card>
