@@ -37,11 +37,6 @@ stages:
               versionSpec: '$(nodeVersion)'
             displayName: 'Instalar Node.js'
 
-          # Instalar dependencias
-          - script: |
-              npm install
-            displayName: 'Instalar dependencias'
-
           # Crear archivo .env.production dinámico según entorno
           - script: |
               if [ "$(Build.SourceBranch)" = "refs/heads/dev" ]; then
@@ -64,8 +59,15 @@ stages:
               cat .env.production
             displayName: "Crear .env.production según entorno"
 
-          # Compilar
+          # Instalar dependencias
           - script: |
+              npm install
+            displayName: 'Instalar dependencias'
+
+          # Compilar con variables de entorno
+          - script: |
+              echo "🔍 Verificando .env.production antes del build:"
+              cat .env.production
               npm run build
             displayName: 'Compilar con Vite'
 
@@ -113,4 +115,3 @@ stages:
               app_location: '/'
               output_location: 'dist'
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
-
