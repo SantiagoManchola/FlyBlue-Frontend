@@ -8,6 +8,15 @@ import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
 import { emailService } from '../../services/emailService';
 
+const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
+const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
+
+declare global {
+  interface Window {
+    paypal: any;
+  }
+}
+
 type CreatePaymentProps = {
   bookingId: string;
 };
@@ -42,256 +51,56 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
-    
-    // Simulate payment processing with sandbox behavior
-    // Card ending in "0000" will fail, others succeed
-    setTimeout(async () => {
-      const lastFourDigits = formData.cardNumber.replace(/\s/g, '').slice(-4);
-      
-      if (lastFourDigits === '0000') {
-        setPaymentFailed(true);
-        setIsProcessing(false);
-      } else {
-        // Pago exitoso: enviar email de confirmación completo
-        setSendingEmail(true);
-        try {
-          const userData = JSON.parse(localStorage.getItem('user') || '{}');
-          const userEmail = userData.correo || 'cliente@ejemplo.com';
-          
-          await emailService.enviarCorreo({
-            to: userEmail,
-            subject: `🎉 Pago Confirmado - Vuelo ${booking.flightNumber}`,
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f5f5f5; padding: 20px;">
-                <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                  
-                  <!-- Header -->
-                  <div style="background: linear-gradient(135deg, #28a745, #20c997); padding: 30px; text-align: center;">
-                    <h1 style="color: white; margin: 0; font-size: 28px;">💳 ¡Pago Confirmado!</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Tu vuelo está listo</p>
-                  </div>
-                  
-                  <!-- Content -->
-                  <div style="padding: 30px;">
-                    <h2 style="color: #333; margin-top: 0;">¡Gracias ${booking.passengerName}! ✈️</h2>
-                    
-                    <p style="color: #666; line-height: 1.6; margin-bottom: 25px;">
-                      Tu pago ha sido procesado exitosamente. Tu vuelo está confirmado y listo para el viaje.
-                    </p>
-                    
-                    <!-- Detalles del Vuelo -->
-                    <div style="background: #f8f9fa; padding: 25px; border-radius: 8px; margin: 25px 0;">
-                      <h3 style="color: #333; margin-top: 0; margin-bottom: 20px;">✈️ Detalles del Vuelo</h3>
-                      <div style="display: grid; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Reserva:</strong>
-                          <span style="color: #333; font-weight: bold;">${booking.bookingNumber}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Vuelo:</strong>
-                          <span style="color: #333;">${booking.flightNumber}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Ruta:</strong>
-                          <span style="color: #333;">${booking.origin} → ${booking.destination}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Fecha:</strong>
-                          <span style="color: #333;">${booking.departureDate} - ${booking.departureTime}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Pasajero:</strong>
-                          <span style="color: #333;">${booking.passengerName}</span>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
-                          <strong style="color: #666;">Asiento:</strong>
-                          <span style="color: #333; font-weight: bold;">${booking.seat}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Detalles del Pago -->
-                    <div style="background: #e8f5e8; padding: 25px; border-radius: 8px; margin: 25px 0; border-left: 4px solid #28a745;">
-                      <h3 style="color: #28a745; margin-top: 0; margin-bottom: 20px;">💰 Resumen del Pago</h3>
-                      <div style="display: grid; gap: 12px;">
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                          <span style="color: #666;">Precio del vuelo:</span>
-                          <span style="color: #333;">€${booking.flightPrice}</span>
-                        </div>
-                        ${booking.luggagePrice > 0 ? `
-                        <div style="display: flex; justify-content: space-between; padding: 8px 0;">
-                          <span style="color: #666;">Equipaje:</span>
-                          <span style="color: #333;">€${booking.luggagePrice}</span>
-                        </div>
-                        ` : ''}
-                        <div style="border-top: 2px solid #28a745; padding-top: 12px; margin-top: 12px;">
-                          <div style="display: flex; justify-content: space-between;">
-                            <strong style="color: #28a745; font-size: 18px;">Total Pagado:</strong>
-                            <strong style="color: #28a745; font-size: 20px;">€${booking.totalPrice}</strong>
-                          </div>
-                        </div>
-                        <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 6px;">
-                          <div style="display: flex; justify-content: space-between; font-size: 14px;">
-                            <span style="color: #666;">Transacción:</span>
-                            <span style="color: #333; font-family: monospace;">TRX-${Date.now().toString().slice(-8)}</span>
-                          </div>
-                          <div style="display: flex; justify-content: space-between; font-size: 14px; margin-top: 8px;">
-                            <span style="color: #666;">Fecha de pago:</span>
-                            <span style="color: #333;">${new Date().toLocaleString('es-ES')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- Instrucciones -->
-                    <div style="background: #fff3cd; padding: 20px; border-radius: 8px; border-left: 4px solid #ffc107; margin: 25px 0;">
-                      <h4 style="color: #856404; margin-top: 0;">📋 Próximos pasos:</h4>
-                      <ul style="color: #856404; line-height: 1.6; margin: 0; padding-left: 20px;">
-                        <li>Llega al aeropuerto 2 horas antes del vuelo</li>
-                        <li>Presenta tu documento de identidad</li>
-                        <li>Usa el código <strong>${booking.bookingNumber}</strong> para el check-in</li>
-                        <li>Tu asiento <strong>${booking.seat}</strong> está confirmado</li>
-                      </ul>
-                    </div>
-                    
-                    <p style="color: #666; line-height: 1.6; text-align: center; margin-top: 30px;">
-                      ¡Que tengas un excelente viaje! ✈️<br>
-                      <strong>Equipo FlyBlue</strong>
-                    </p>
-                  </div>
-                  
-                  <!-- Footer -->
-                  <div style="background: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #eee;">
-                    <p style="color: #999; margin: 0; font-size: 14px;">
-                      © 2025 FlyBlue - Tu aerolínea de confianza
-                    </p>
-                  </div>
-                  
-                </div>
-              </div>
-            `
-          });
-          console.log('Email de confirmación completo enviado');
-        } catch (emailError) {
-          console.warn('No se pudo enviar email, pero el pago se confirmó:', emailError);
-        } finally {
-          setSendingEmail(false);
-        }
-        
-        setPaymentComplete(true);
-        setIsProcessing(false);
-      }
-    }, 2000);
-  };
-
-  const handleRetryPayment = () => {
     setPaymentFailed(false);
-    setFormData({
-      cardNumber: '',
-      cardName: '',
-      expiryDate: '',
-      cvv: '',
-    });
+
+    try {
+
+      // 2. Crear un formulario HTML oculto que apunta a PayPal Sandbox
+      const form = document.createElement('form');
+      form.setAttribute('method', 'POST');
+      form.setAttribute('action', PAYPAL_SANDBOX_URL);
+
+      // Función auxiliar para añadir campos al formulario
+      const addField = (name: string, value: string) => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'hidden');
+        input.setAttribute('name', name);
+        input.setAttribute('value', value);
+        form.appendChild(input);
+      };
+
+      // 3. Campos mínimos para un pago simple (_xclick)
+      addField('cmd', '_xclick'); // tipo de operación
+      addField('business', PAYPAL_BUSINESS_EMAIL); // a quién se le paga
+      addField(
+        'item_name',
+        `Reserva ${booking.bookingNumber} - Vuelo ${booking.flightNumber}`
+      ); // descripción
+      addField('amount', booking.totalPrice.toFixed(2)); // monto
+      addField('currency_code', 'EUR'); // moneda
+
+      // 4. URLs a donde PayPal redirige después de pagar o cancelar
+      const baseUrl = window.location.origin; // ej: http://localhost:5173
+
+      addField('return', `${baseUrl}/payment-success`);
+
+      addField(
+        "cancel_return",
+        `${baseUrl}/payment-cancel?paymentId=ERR-${Date.now()}`
+      );;
+
+      // 5. Campo opcional para que tú sepas qué reserva era (no se usa en este demo)
+      addField('custom', bookingId);
+
+      // 6. Añadir el formulario al DOM y enviarlo
+      document.body.appendChild(form);
+      form.submit();
+    } catch (error) {
+      console.error('Error al redirigir a PayPal:', error);
+      setPaymentFailed(true);
+      setIsProcessing(false);
+    }
   };
-
-  if (paymentFailed) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-red-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <X className="w-10 h-10 text-red-600" />
-            </div>
-            <h2 className="text-red-600 mb-2">Pago Rechazado</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago no pudo ser procesado. La reserva ha sido cancelada.
-            </p>
-            <div className="bg-red-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Código de Error</p>
-              <p className="text-2xl text-red-600">ERR-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <Alert className="mb-6 border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                La tarjeta ha sido rechazada. Por favor, verifica los datos o intenta con otra tarjeta.
-              </AlertDescription>
-            </Alert>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto:</span>
-                <span className="text-gray-800">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <Button 
-              onClick={handleRetryPayment}
-              className="w-full bg-sky-500 hover:bg-sky-600"
-            >
-              Intentar Nuevamente
-            </Button>
-            <p className="text-xs text-gray-500 mt-4">
-              Sandbox: Usa una tarjeta que NO termine en 0000 para simular un pago exitoso
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (paymentComplete) {
-    return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-green-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-green-600 mb-2">¡Pago Exitoso!</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago ha sido procesado correctamente. Tu vuelo está confirmado.
-            </p>
-            <div className="bg-green-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Número de Transacción</p>
-              <p className="text-2xl text-green-600">TRX-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Pasajero:</span>
-                <span className="text-gray-800">{booking.passengerName}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Pagado:</span>
-                <span className="text-green-600">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-800 text-center">
-                📧 <strong>Confirmación enviada por correo</strong><br />
-                Revisa tu bandeja de entrada para ver todos los detalles de tu vuelo
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
