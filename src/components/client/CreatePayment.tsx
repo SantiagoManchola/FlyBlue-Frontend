@@ -1,31 +1,31 @@
-import { useState } from 'react';
-import { CreditCard, Lock, Check, X, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { CreditCard, Lock, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
-import { Alert, AlertDescription } from '../ui/alert';
-import { emailService } from '../../services/emailService';
+import { clientService } from '../../services/clientService';
+import { obtenerVueloPorId } from '../../api/admin/vuelos.api';
+import { obtenerEquipajes } from '../../api/admin/equipajes.api';
+import { toast } from 'sonner';
+import type { VueloResponse, EquipajeResponse } from '../../api/types';
 
 const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
 const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
-
-declare global {
-  interface Window {
-    paypal: any;
-  }
-}
 
 type CreatePaymentProps = {
   bookingId: string;
 };
 
 export default function CreatePayment({ bookingId }: CreatePaymentProps) {
-  const [paymentComplete, setPaymentComplete] = useState(false);
-  const [paymentFailed, setPaymentFailed] = useState(false);
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [sendingEmail, setSendingEmail] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [vueloData, setVueloData] = useState<VueloResponse | null>(null);
+  const [equipajeData, setEquipajeData] = useState<EquipajeResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     cardNumber: '',
     cardName: '',
@@ -33,34 +33,83 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     cvv: '',
   });
 
-  // Mock booking data
-  const booking = {
-    bookingNumber: 'BK-123456',
-    flightNumber: 'SL101',
-    origin: 'Madrid (MAD)',
-    destination: 'Barcelona (BCN)',
-    departureDate: '15 Feb 2024',
-    departureTime: '08:00',
-    passengerName: 'Juan Pérez',
-    seat: '12A',
-    flightPrice: 49.99,
-    luggagePrice: 0,
-    totalPrice: 49.99,
-  };
+  // Obtener datos de la reserva desde sessionStorage al cargar
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const data = sessionStorage.getItem('bookingData');
+        if (data) {
+          const parsedData = JSON.parse(data);
+          setBookingData(parsedData);
 
-  const handleSubmit = (e: React.FormEvent) => {
+          // ✅ Obtener datos reales del vuelo
+          const vuelo = await obtenerVueloPorId(parsedData.flightId);
+          setVueloData(vuelo);
+
+          // ✅ Obtener datos del equipaje
+          const equipajes = await obtenerEquipajes();
+          const equipaje = equipajes.find(e => e.id_equipaje === parsedData.selectedLuggage);
+          setEquipajeData(equipaje || null);
+        } else {
+          navigate('/client/flights');
+        }
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+        navigate('/client/flights');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarDatos();
+  }, [navigate]);
+
+  // Construir datos del booking con información real
+  const booking = bookingData && vueloData ? {
+    bookingNumber: `BK-${Date.now()}`,
+    flightNumber: vueloData.codigo || 'N/A',
+    origin: vueloData.ciudad_salida || 'N/A',
+    destination: vueloData.ciudad_llegada || 'N/A',
+    departureDate: new Date(vueloData.fecha_salida).toLocaleDateString('es-ES', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    }),
+    departureTime: new Date(vueloData.fecha_salida).toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
+    passengerName: bookingData.userName || 'Cliente', // ✅ Usar nombre real
+    seat: bookingData.selectedSeat || 'N/A', // ✅ Ahora es "2B"
+    flightPrice: vueloData.precio_base || 0,
+    luggagePrice: equipajeData?.precio || 0,
+    totalPrice: bookingData.totalPrice || 0,
+  } : null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
+      toast.error('Por favor completa todos los campos');
+      return;
+    }
+
     setIsProcessing(true);
-    setPaymentFailed(false);
 
     try {
+      // ✅ Solo guardar datos temporales, NO crear reserva
+      sessionStorage.setItem('paymentData', JSON.stringify({
+        cardName: formData.cardName,
+        amount: booking?.totalPrice,
+        timestamp: new Date().toISOString(),
+      }));
 
-      // 2. Crear un formulario HTML oculto que apunta a PayPal Sandbox
+      // Enviar a PayPal sin crear la reserva aún
       const form = document.createElement('form');
       form.setAttribute('method', 'POST');
       form.setAttribute('action', PAYPAL_SANDBOX_URL);
 
-      // Función auxiliar para añadir campos al formulario
       const addField = (name: string, value: string) => {
         const input = document.createElement('input');
         input.setAttribute('type', 'hidden');
@@ -69,38 +118,49 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
         form.appendChild(input);
       };
 
-      // 3. Campos mínimos para un pago simple (_xclick)
-      addField('cmd', '_xclick'); // tipo de operación
-      addField('business', PAYPAL_BUSINESS_EMAIL); // a quién se le paga
+      addField('cmd', '_xclick');
+      addField('business', PAYPAL_BUSINESS_EMAIL);
       addField(
         'item_name',
-        `Reserva ${booking.bookingNumber} - Vuelo ${booking.flightNumber}`
-      ); // descripción
-      addField('amount', booking.totalPrice.toFixed(2)); // monto
-      addField('currency_code', 'EUR'); // moneda
+        `Reserva Vuelo - ${booking?.flightNumber}`
+      );
+      addField('amount', booking?.totalPrice.toFixed(2) || '0');
+      addField('currency_code', 'EUR');
 
-      // 4. URLs a donde PayPal redirige después de pagar o cancelar
-      const baseUrl = window.location.origin; // ej: http://localhost:5173
-
+      const baseUrl = window.location.origin;
       addField('return', `${baseUrl}/payment-success`);
+      addField('cancel_return', `${baseUrl}/payment-cancel`);
+      addField('custom', bookingData.flightId.toString());
 
-      addField(
-        "cancel_return",
-        `${baseUrl}/payment-cancel?paymentId=ERR-${Date.now()}`
-      );;
-
-      // 5. Campo opcional para que tú sepas qué reserva era (no se usa en este demo)
-      addField('custom', bookingId);
-
-      // 6. Añadir el formulario al DOM y enviarlo
       document.body.appendChild(form);
       form.submit();
     } catch (error) {
-      console.error('Error al redirigir a PayPal:', error);
-      setPaymentFailed(true);
+      console.error('❌ Error:', error);
+      toast.error('Error al procesar el pago.');
       setIsProcessing(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500 mx-auto mb-3" />
+          <p className="text-gray-600">Cargando información de pago...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!booking) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center py-12">
+          <p className="text-gray-600">Error al cargar la información de pago.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -132,6 +192,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     }}
                     maxLength={19}
                     required
+                    disabled={isProcessing}
                   />
                 </div>
 
@@ -143,6 +204,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     value={formData.cardName}
                     onChange={(e) => setFormData({ ...formData, cardName: e.target.value.toUpperCase() })}
                     required
+                    disabled={isProcessing}
                   />
                 </div>
 
@@ -162,6 +224,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                       }}
                       maxLength={5}
                       required
+                      disabled={isProcessing}
                     />
                   </div>
                   <div className="space-y-2">
@@ -174,6 +237,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                       onChange={(e) => setFormData({ ...formData, cvv: e.target.value.replace(/\D/g, '') })}
                       maxLength={3}
                       required
+                      disabled={isProcessing}
                     />
                   </div>
                 </div>
@@ -190,11 +254,11 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
 
                 <Button 
                   type="submit" 
-                  disabled={isProcessing || sendingEmail}
+                  disabled={isProcessing}
                   className="w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-400"
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  {isProcessing ? 'Procesando pago...' : sendingEmail ? 'Enviando confirmación...' : `Pagar €${booking.totalPrice}`}
+                  {isProcessing ? 'Procesando pago...' : `Pagar €${booking.totalPrice}`}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">

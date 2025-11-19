@@ -1,78 +1,95 @@
 import { useState, useEffect } from 'react';
-import { Plane, X } from 'lucide-react';
+import { Plane, X, Loader2, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { obtenerCiudades } from '../../api/admin/ciudades.api';
-import { buscarVuelos } from '../../api/admin/vuelos.api';
+import { clientService } from '../../services/clientService';
 import type { CiudadResponse, VueloBusquedaResponse } from '../../api/types';
-
-
 
 type FlightsProps = {
   onBookFlight: (flightId: number) => void;
 };
 
-
-
 export default function Flights({ onBookFlight }: FlightsProps) {
-  const [flights, setFlights] = useState<VueloBusquedaResponse[]>([]);
+  const [flights, setFlights] = useState<any[]>([]);
+  const [allFlights, setAllFlights] = useState<any[]>([]);
   const [ciudades, setCiudades] = useState<CiudadResponse[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [searchOrigin, setSearchOrigin] = useState<string>('');
   const [searchDestination, setSearchDestination] = useState<string>('');
   const [searchDate, setSearchDate] = useState('');
 
   useEffect(() => {
-    const cargarCiudades = async () => {
-      try {
-        const data = await obtenerCiudades();
-        setCiudades(data);
-      } catch (error) {
-        console.error('Error al cargar ciudades:', error);
-      }
-    };
-    cargarCiudades();
+    loadCities();
+    loadAllFlights();
   }, []);
 
-  const buscarVuelosHandler = async () => {
-    if (!searchOrigin || !searchDestination || !searchDate) {
-      return;
-    }
-    
-    setLoading(true);
+  const loadCities = async () => {
     try {
-      const data = await buscarVuelos(
-        parseInt(searchOrigin),
-        parseInt(searchDestination),
-        searchDate
-      );
+      const data = await clientService.obtenerCiudades();
+      setCiudades(data);
+    } catch (error) {
+      console.error('Error al cargar ciudades:', error);
+    }
+  };
+
+  const loadAllFlights = async () => {
+    try {
+      console.log('🔄 Client Flights - Cargando todos los vuelos...');
+      setLoading(true);
+      const data = await clientService.obtenerTodosLosVuelos();
+      console.log('✅ Client Flights - Vuelos cargados:', data.length);
+      setAllFlights(data);
       setFlights(data);
     } catch (error) {
-      console.error('Error al buscar vuelos:', error);
+      console.error('❌ Client Flights - Error al cargar vuelos:', error);
       setFlights([]);
     } finally {
       setLoading(false);
     }
   };
 
+  const buscarVuelosHandler = async () => {
+    if (!searchOrigin || !searchDestination || !searchDate) {
+      return;
+    }
 
+    try {
+      setIsSearching(true);
+      console.log('🔍 Buscando vuelos con:', {
+        origen: parseInt(searchOrigin),
+        destino: parseInt(searchDestination),
+        fecha: searchDate
+      });
+
+      const data = await clientService.buscarVuelosConFiltros({
+        origen: parseInt(searchOrigin),
+        destino: parseInt(searchDestination),
+        fecha: searchDate
+      });
+
+      console.log(`✅ Se encontraron ${data.length} vuelos`);
+      setFlights(data);
+    } catch (error) {
+      console.error('❌ Error al buscar vuelos:', error);
+      setFlights([]);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const clearFilters = () => {
+    console.log('🔄 Limpiando filtros...');
     setSearchOrigin('');
     setSearchDestination('');
     setSearchDate('');
-    setFlights([]);
+    setFlights(allFlights);
   };
 
   const hasActiveFilters = !!searchOrigin || !!searchDestination || !!searchDate;
-
-  const getCiudadNombre = (id: string) => {
-    const ciudad = ciudades.find(c => c.id_ciudad.toString() === id);
-    return ciudad ? ciudad.nombre : id;
-  };
 
   return (
     <div className="space-y-6">
@@ -95,20 +112,8 @@ export default function Flights({ onBookFlight }: FlightsProps) {
             <CardContent className="p-6">
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="origin" className="text-gray-700">Desde</Label>
-                    {searchOrigin !== 'all' && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchOrigin('all')}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Limpiar"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  <Select value={searchOrigin} onValueChange={setSearchOrigin}>
+                  <Label htmlFor="origin" className="text-gray-700">Desde</Label>
+                  <Select value={searchOrigin} onValueChange={setSearchOrigin} disabled={isSearching}>
                     <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Seleccionar origen" />
                     </SelectTrigger>
@@ -120,23 +125,11 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       ))}
                     </SelectContent>
                   </Select>
-
                 </div>
+
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="destination" className="text-gray-700">Hacia</Label>
-                    {searchDestination !== 'all' && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchDestination('all')}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Limpiar"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  <Select value={searchDestination} onValueChange={setSearchDestination}>
+                  <Label htmlFor="destination" className="text-gray-700">Hacia</Label>
+                  <Select value={searchDestination} onValueChange={setSearchDestination} disabled={isSearching}>
                     <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Seleccionar destino" />
                     </SelectTrigger>
@@ -148,41 +141,43 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       ))}
                     </SelectContent>
                   </Select>
-
                 </div>
+
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="date" className="text-gray-700">Fecha</Label>
-                    {searchDate && (
-                      <button
-                        onClick={() => setSearchDate('')}
-                        className="text-gray-400 hover:text-gray-600 transition-colors"
-                        title="Limpiar"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
+                  <Label htmlFor="date" className="text-gray-700">Fecha</Label>
                   <input
                     id="date"
                     type="date"
                     value={searchDate}
                     onChange={(e) => setSearchDate(e.target.value)}
+                    disabled={isSearching}
                     className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
+
                 <div className="flex items-end gap-2">
                   <Button
                     onClick={buscarVuelosHandler}
-                    disabled={!searchOrigin || !searchDestination || !searchDate || loading}
-                    className="bg-sky-500 hover:bg-sky-600"
+                    disabled={!searchOrigin || !searchDestination || !searchDate || isSearching || loading}
+                    className="bg-sky-500 hover:bg-sky-600 flex-1"
                   >
-                    {loading ? 'Buscando...' : 'Buscar Vuelos'}
+                    {isSearching ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Buscando...
+                      </>
+                    ) : (
+                      <>
+                        <Search className="w-4 h-4 mr-2" />
+                        Buscar
+                      </>
+                    )}
                   </Button>
                   {hasActiveFilters && (
                     <Button
                       variant="outline"
                       onClick={clearFilters}
+                      disabled={isSearching}
                     >
                       <X className="w-4 h-4 mr-2" />
                       Limpiar
@@ -195,83 +190,101 @@ export default function Flights({ onBookFlight }: FlightsProps) {
         </div>
       </div>
 
-      {flights.length > 0 && (
+      {/* Resultados */}
+      {(loading || isSearching) ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500 mb-3" />
+          <p className="text-gray-600">{isSearching ? 'Buscando vuelos...' : 'Cargando vuelos...'}</p>
+        </div>
+      ) : flights.length > 0 ? (
         <div>
           <h3 className="text-gray-800 mb-4">
             {flights.length} vuelos disponibles
           </h3>
           <div className="grid gap-4">
-            {flights.map((flight) => (
-              <Card key={flight.id_vuelo} className="hover:shadow-md transition-all bg-white border border-gray-100">
-                <CardContent className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-xs text-gray-500">{flight.codigo}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(flight.fecha_salida).toLocaleDateString('es-ES', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </span>
-                      </div>
+            {flights.map((flight) => {
+              const salidaDate = new Date(flight.fecha_salida);
+              const llegadaDate = new Date(flight.fecha_llegada);
+              const codigoParts = flight.codigo?.split('-') || [];
+              const ciudadOrigen = flight.ciudad_salida || codigoParts[0] || 'N/A';
+              const ciudadDestino = flight.ciudad_llegada || codigoParts[1] || 'N/A';
 
-                      <div className="flex items-center gap-6">
-                        <div className="text-center">
-                          <p className="text-2xl text-gray-900 mb-1">
-                            {new Date(flight.fecha_salida).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit'
+              return (
+                <Card key={flight.id_vuelo || flight.id} className="hover:shadow-md transition-all bg-white border border-gray-100">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-xs text-gray-500">{flight.codigo}</span>
+                          <span className="text-xs text-gray-400">•</span>
+                          <span className="text-xs text-gray-500">
+                            {salidaDate.toLocaleDateString('es-ES', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
                             })}
-                          </p>
-                          <p className="text-gray-600 mb-0.5">Origen</p>
+                          </span>
                         </div>
 
-                        <div className="flex-1 flex flex-col items-center gap-2">
-                          <div className="flex items-center w-full">
-                            <div className="h-px bg-gray-200 flex-1"></div>
-                            <div className="px-3">
-                              <Plane className="w-4 h-4 text-gray-400 rotate-90" />
-                            </div>
-                            <div className="h-px bg-gray-200 flex-1"></div>
+                        <div className="flex items-center gap-6">
+                          <div className="text-center">
+                            <p className="text-2xl text-gray-900 mb-1">
+                              {salidaDate.toLocaleTimeString('es-ES', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-gray-600 mb-0.5">{ciudadOrigen}</p>
                           </div>
-                          <span className="text-xs text-gray-500">Directo</span>
-                        </div>
 
-                        <div className="text-center">
-                          <p className="text-2xl text-gray-900 mb-1">
-                            {new Date(flight.fecha_llegada).toLocaleTimeString('es-ES', {
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </p>
-                          <p className="text-gray-600 mb-0.5">Destino</p>
+                          <div className="flex-1 flex flex-col items-center gap-2">
+                            <div className="flex items-center w-full">
+                              <div className="h-px bg-gray-200 flex-1"></div>
+                              <div className="px-3">
+                                <Plane className="w-4 h-4 text-gray-400 rotate-90" />
+                              </div>
+                              <div className="h-px bg-gray-200 flex-1"></div>
+                            </div>
+                            <span className="text-xs text-gray-500">Directo</span>
+                          </div>
+
+                          <div className="text-center">
+                            <p className="text-2xl text-gray-900 mb-1">
+                              {llegadaDate.toLocaleTimeString('es-ES', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                            <p className="text-gray-600 mb-0.5">{ciudadDestino}</p>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex flex-col items-end gap-4 md:pl-6 md:border-l">
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500 mb-1">Desde</p>
-                        <p className="text-3xl text-sky-500">€{flight.precio_base}</p>
-                      </div>
+                      <div className="flex flex-col items-end gap-4 md:pl-6 md:border-l">
+                        <div className="text-right">
+                          <p className="text-xs text-gray-500 mb-1">Desde</p>
+                          <p className="text-3xl text-sky-500">€{flight.precio_base}</p>
+                        </div>
 
-                      <div className="flex flex-col gap-2 w-full min-w-[200px]">
                         <Button
-                          className="bg-sky-500 hover:bg-sky-600 w-full"
-                          onClick={() => onBookFlight(flight.id_vuelo)}
+                          className="bg-sky-500 hover:bg-sky-600 w-full min-w-[200px] rounded-4xl"
+                          onClick={() => onBookFlight(flight.id_vuelo || flight.id)}
                         >
                           Reservar Ahora
                         </Button>
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500">
+          <Plane className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <p>No se encontraron vuelos</p>
+          <p className="text-sm mt-2">Intenta con otros criterios de búsqueda</p>
         </div>
       )}
     </div>

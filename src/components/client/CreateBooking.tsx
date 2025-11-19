@@ -8,19 +8,24 @@ import { obtenerVueloPorId, obtenerAsientosVuelo } from '../../api/admin/vuelos.
 import { obtenerEquipajes } from '../../api/admin/equipajes.api';
 import { crearReserva } from '../../api/client/reservas.api';
 import type { VueloResponse, Asiento, EquipajeResponse } from '../../api/types';
+import { toast } from 'sonner'; // Agregar esta importación
 
 type CreateBookingProps = {
   flightId: number;
   userId: number;
+  userName: string; // ✅ Agregar nombre del usuario
   onProceedToPayment: (bookingData: {
     flightId: number;
     seat: number;
     luggage: number;
     totalPrice: number;
+    selectedSeat: string; // ✅ Cambiar a string (código del asiento)
+    selectedLuggage: number;
+    userName: string; // ✅ Agregar nombre
   }) => void;
 };
 
-export default function CreateBooking({ flightId, userId, onProceedToPayment }: CreateBookingProps) {
+export default function CreateBooking({ flightId, userId, userName, onProceedToPayment }: CreateBookingProps) {
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [selectedLuggage, setSelectedLuggage] = useState<number | null>(null);
   const [flight, setFlight] = useState<VueloResponse | null>(null);
@@ -67,30 +72,28 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
   const selectedLuggageOption = equipajes.find((l) => l.id_equipaje === selectedLuggage);
   const totalPrice = (flight?.precio_base || 0) + (selectedLuggageOption?.precio || 0);
 
-  const handleProceedToPayment = async () => {
-    if (!selectedSeat || !selectedLuggage) {
-      alert('Por favor selecciona un asiento y tipo de equipaje');
+  const handleProceedToPayment = () => {
+    if (!selectedSeat || selectedLuggage === null) {
+      toast.error('Por favor selecciona asiento y equipaje');
       return;
     }
-    
-    try {
-      await crearReserva({
-        id_usuario: userId,
-        id_vuelo: flightId,
-        id_asiento: selectedSeat,
-        id_equipaje: selectedLuggage
-      });
-      
-      onProceedToPayment({
-        flightId,
-        seat: selectedSeat,
-        luggage: selectedLuggage,
-        totalPrice,
-      });
-    } catch (error) {
-      console.error('Error al crear reserva:', error);
-      alert('Error al crear la reserva. Por favor, inténtalo de nuevo.');
-    }
+
+    // ✅ Obtener el código del asiento (fila + columna)
+    const seatCode = asientos.find(a => a.id_asiento === selectedSeat);
+    const seatCodeString = seatCode ? `${seatCode.fila}${seatCode.columna}` : '';
+
+    // ✅ Solo pasar datos, NO crear reserva
+    const bookingData = {
+      flightId,
+      seat: selectedSeat,
+      luggage: selectedLuggage,
+      totalPrice,
+      selectedSeat: seatCodeString, // ✅ Ahora es "2B" en lugar de 807
+      selectedLuggage,
+      userName, // ✅ Agregar nombre
+    };
+
+    onProceedToPayment(bookingData);
   };
 
   if (loading) {
