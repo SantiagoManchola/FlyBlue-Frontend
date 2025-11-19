@@ -12,9 +12,12 @@ import ClientFlightsPage from "../pages/client/ClientFlightsPage";
 import ClientBookingPage from "../pages/client/ClientBookingPage";
 import ClientPaymentPage from "../pages/client/ClientPaymentPage";
 import ClientMyBookingsPage from "../pages/client/ClientMyBookingsPage";
+import ProfilePage from "../pages/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import { User } from "../App";
+import PaymentSuccessPage from '../pages/client/ClientPaymentSuccessPage';
+import PaymentCancelPage from '../pages/client/ClientPaymentCancelPage';
 
 type RouterConfig = {
   user: User | null;
@@ -27,6 +30,15 @@ export const createAppRouter = ({ user, onLogin, onLogout }: RouterConfig) => {
     {
       path: "/",
       element: <Navigate to="/login" replace />,
+    },
+
+    {
+      path: "/payment-success",
+      element: <PaymentSuccessPage />,
+    },
+    {
+      path: "/payment-cancel",
+      element: <PaymentCancelPage />,
     },
     {
       path: "/",
@@ -78,6 +90,10 @@ export const createAppRouter = ({ user, onLogin, onLogout }: RouterConfig) => {
           path: "luggage",
           element: <AdminLuggagePage />,
         },
+        {
+          path: "profile",
+          element: <ProfilePage />,
+        },
       ],
     },
     {
@@ -107,6 +123,10 @@ export const createAppRouter = ({ user, onLogin, onLogout }: RouterConfig) => {
         {
           path: "my-bookings",
           element: <ClientMyBookingsPage userId={user?.id || ''} />,
+        },
+        {
+          path: "profile",
+          element: <ProfilePage />,
         },
       ],
     },

@@ -1,20 +1,31 @@
-import { useState } from 'react';
-import { CreditCard, Lock, Check, X, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { CreditCard, Lock, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
-import { Alert, AlertDescription } from '../ui/alert';
+import { clientService } from '../../services/clientService';
+import { obtenerVueloPorId } from '../../api/admin/vuelos.api';
+import { obtenerEquipajes } from '../../api/admin/equipajes.api';
+import { toast } from 'sonner';
+import type { VueloResponse, EquipajeResponse } from '../../api/types';
+
+const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
+const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
 
 type CreatePaymentProps = {
   bookingId: string;
 };
 
 export default function CreatePayment({ bookingId }: CreatePaymentProps) {
-  const [paymentComplete, setPaymentComplete] = useState(false);
-  const [paymentFailed, setPaymentFailed] = useState(false);
+  const navigate = useNavigate();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bookingData, setBookingData] = useState<any>(null);
+  const [vueloData, setVueloData] = useState<VueloResponse | null>(null);
+  const [equipajeData, setEquipajeData] = useState<EquipajeResponse | null>(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     cardNumber: '',
     cardName: '',
@@ -22,142 +33,131 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     cvv: '',
   });
 
-  // Mock booking data
-  const booking = {
-    bookingNumber: 'BK-123456',
-    flightNumber: 'SL101',
-    origin: 'Madrid (MAD)',
-    destination: 'Barcelona (BCN)',
-    departureDate: '15 Feb 2024',
-    departureTime: '08:00',
-    passengerName: 'Juan Pérez',
-    seat: '12A',
-    flightPrice: 49.99,
-    luggagePrice: 0,
-    totalPrice: 49.99,
-  };
+  // Obtener datos de la reserva desde sessionStorage al cargar
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const data = sessionStorage.getItem('bookingData');
+        if (data) {
+          const parsedData = JSON.parse(data);
+          setBookingData(parsedData);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    
-    // Simulate payment processing with sandbox behavior
-    // Card ending in "0000" will fail, others succeed
-    setTimeout(() => {
-      const lastFourDigits = formData.cardNumber.replace(/\s/g, '').slice(-4);
-      
-      if (lastFourDigits === '0000') {
-        setPaymentFailed(true);
-        setIsProcessing(false);
-      } else {
-        setPaymentComplete(true);
-        setIsProcessing(false);
+          // ✅ Obtener datos reales del vuelo
+          const vuelo = await obtenerVueloPorId(parsedData.flightId);
+          setVueloData(vuelo);
+
+          // ✅ Obtener datos del equipaje
+          const equipajes = await obtenerEquipajes();
+          const equipaje = equipajes.find(e => e.id_equipaje === parsedData.selectedLuggage);
+          setEquipajeData(equipaje || null);
+        } else {
+          navigate('/client/flights');
+        }
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+        navigate('/client/flights');
+      } finally {
+        setLoading(false);
       }
-    }, 2000);
+    };
+
+    cargarDatos();
+  }, [navigate]);
+
+  // Construir datos del booking con información real
+  const booking = bookingData && vueloData ? {
+    bookingNumber: `BK-${Date.now()}`,
+    flightNumber: vueloData.codigo || 'N/A',
+    origin: vueloData.ciudad_salida || 'N/A',
+    destination: vueloData.ciudad_llegada || 'N/A',
+    departureDate: new Date(vueloData.fecha_salida).toLocaleDateString('es-ES', { 
+      weekday: 'short',
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    }),
+    departureTime: new Date(vueloData.fecha_salida).toLocaleTimeString('es-ES', { 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }),
+    passengerName: bookingData.userName || 'Cliente', // ✅ Usar nombre real
+    seat: bookingData.selectedSeat || 'N/A', // ✅ Ahora es "2B"
+    flightPrice: vueloData.precio_base || 0,
+    luggagePrice: equipajeData?.precio || 0,
+    totalPrice: bookingData.totalPrice || 0,
+  } : null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.cardNumber || !formData.cardName || !formData.expiryDate || !formData.cvv) {
+      toast.error('Por favor completa todos los campos');
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      // ✅ Solo guardar datos temporales, NO crear reserva
+      sessionStorage.setItem('paymentData', JSON.stringify({
+        cardName: formData.cardName,
+        amount: booking?.totalPrice,
+        timestamp: new Date().toISOString(),
+      }));
+
+      // Enviar a PayPal sin crear la reserva aún
+      const form = document.createElement('form');
+      form.setAttribute('method', 'POST');
+      form.setAttribute('action', PAYPAL_SANDBOX_URL);
+
+      const addField = (name: string, value: string) => {
+        const input = document.createElement('input');
+        input.setAttribute('type', 'hidden');
+        input.setAttribute('name', name);
+        input.setAttribute('value', value);
+        form.appendChild(input);
+      };
+
+      addField('cmd', '_xclick');
+      addField('business', PAYPAL_BUSINESS_EMAIL);
+      addField(
+        'item_name',
+        `Reserva Vuelo - ${booking?.flightNumber}`
+      );
+      addField('amount', booking?.totalPrice.toFixed(2) || '0');
+      addField('currency_code', 'EUR');
+
+      const baseUrl = window.location.origin;
+      addField('return', `${baseUrl}/payment-success`);
+      addField('cancel_return', `${baseUrl}/payment-cancel`);
+      addField('custom', bookingData.flightId.toString());
+
+      document.body.appendChild(form);
+      form.submit();
+    } catch (error) {
+      console.error('❌ Error:', error);
+      toast.error('Error al procesar el pago.');
+      setIsProcessing(false);
+    }
   };
 
-  const handleRetryPayment = () => {
-    setPaymentFailed(false);
-    setFormData({
-      cardNumber: '',
-      cardName: '',
-      expiryDate: '',
-      cvv: '',
-    });
-  };
-
-  if (paymentFailed) {
+  if (loading) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-red-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-red-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <X className="w-10 h-10 text-red-600" />
-            </div>
-            <h2 className="text-red-600 mb-2">Pago Rechazado</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago no pudo ser procesado. La reserva ha sido cancelada.
-            </p>
-            <div className="bg-red-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Código de Error</p>
-              <p className="text-2xl text-red-600">ERR-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <Alert className="mb-6 border-red-200 bg-red-50">
-              <AlertCircle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-800">
-                La tarjeta ha sido rechazada. Por favor, verifica los datos o intenta con otra tarjeta.
-              </AlertDescription>
-            </Alert>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Monto:</span>
-                <span className="text-gray-800">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <Button 
-              onClick={handleRetryPayment}
-              className="w-full bg-sky-500 hover:bg-sky-600"
-            >
-              Intentar Nuevamente
-            </Button>
-            <p className="text-xs text-gray-500 mt-4">
-              Sandbox: Usa una tarjeta que NO termine en 0000 para simular un pago exitoso
-            </p>
-          </CardContent>
-        </Card>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500 mx-auto mb-3" />
+          <p className="text-gray-600">Cargando información de pago...</p>
+        </div>
       </div>
     );
   }
 
-  if (paymentComplete) {
+  if (!booking) {
     return (
-      <div className="max-w-2xl mx-auto">
-        <Card className="border-green-200">
-          <CardContent className="p-12 text-center">
-            <div className="bg-green-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-green-600" />
-            </div>
-            <h2 className="text-green-600 mb-2">¡Pago Exitoso!</h2>
-            <p className="text-gray-600 mb-6">
-              Tu pago ha sido procesado correctamente. Tu vuelo está confirmado.
-            </p>
-            <div className="bg-green-50 p-6 rounded-lg mb-6">
-              <p className="text-sm text-gray-600 mb-2">Número de Transacción</p>
-              <p className="text-2xl text-green-600">TRX-{Date.now().toString().slice(-8)}</p>
-            </div>
-            <div className="space-y-2 text-sm text-left bg-gray-50 p-4 rounded-lg mb-6">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Reserva:</span>
-                <span className="text-gray-800">{booking.bookingNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Vuelo:</span>
-                <span className="text-gray-800">{booking.flightNumber}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Pasajero:</span>
-                <span className="text-gray-800">{booking.passengerName}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total Pagado:</span>
-                <span className="text-green-600">€{booking.totalPrice}</span>
-              </div>
-            </div>
-            <p className="text-sm text-gray-600">
-              Hemos enviado tu tarjeta de embarque por correo electrónico.
-            </p>
-          </CardContent>
-        </Card>
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="text-center py-12">
+          <p className="text-gray-600">Error al cargar la información de pago.</p>
+        </div>
       </div>
     );
   }
@@ -192,6 +192,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     }}
                     maxLength={19}
                     required
+                    disabled={isProcessing}
                   />
                 </div>
 
@@ -203,6 +204,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     value={formData.cardName}
                     onChange={(e) => setFormData({ ...formData, cardName: e.target.value.toUpperCase() })}
                     required
+                    disabled={isProcessing}
                   />
                 </div>
 
@@ -222,6 +224,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                       }}
                       maxLength={5}
                       required
+                      disabled={isProcessing}
                     />
                   </div>
                   <div className="space-y-2">
@@ -234,6 +237,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                       onChange={(e) => setFormData({ ...formData, cvv: e.target.value.replace(/\D/g, '') })}
                       maxLength={3}
                       required
+                      disabled={isProcessing}
                     />
                   </div>
                 </div>
@@ -248,9 +252,13 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600">
+                <Button 
+                  type="submit" 
+                  disabled={isProcessing}
+                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-400"
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pagar €{booking.totalPrice}
+                  {isProcessing ? 'Procesando pago...' : `Pagar €${booking.totalPrice}`}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">

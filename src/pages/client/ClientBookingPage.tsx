@@ -1,5 +1,6 @@
 import { useParams, useNavigate } from 'react-router';
 import CreateBooking from '../../components/client/CreateBooking';
+import { useUser } from '../../hooks/useUser'; // ✅ Importar hook
 
 type ClientBookingPageProps = {
   userId: string;
@@ -8,14 +9,15 @@ type ClientBookingPageProps = {
 export default function ClientBookingPage({ userId }: ClientBookingPageProps) {
   const { flightId } = useParams<{ flightId: string }>();
   const navigate = useNavigate();
+  const user = useUser(); // ✅ Usar hook
 
-  const handleProceedToPayment = (bookingData: { 
-    flightId: string; 
-    seat: string; 
-    luggage: string; 
-    totalPrice: number 
-  }) => {
-    // Navegar a la página de pago
+  const handleProceedToPayment = (bookingData: any) => {
+    sessionStorage.setItem('bookingData', JSON.stringify({
+      ...bookingData,
+      userId,
+      timestamp: new Date().toISOString(),
+    }));
+
     navigate(`/client/payment/${bookingData.flightId}`);
   };
 
@@ -26,8 +28,9 @@ export default function ClientBookingPage({ userId }: ClientBookingPageProps) {
 
   return (
     <CreateBooking 
-      flightId={flightId} 
-      userId={userId} 
+      flightId={parseInt(flightId)} 
+      userId={parseInt(userId)} 
+      userName={user?.name || 'Cliente'} // ✅ Usar nombre del hook
       onProceedToPayment={handleProceedToPayment} 
     />
   );
