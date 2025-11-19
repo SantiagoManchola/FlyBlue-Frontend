@@ -108,10 +108,10 @@ stages:
               fi
             displayName: 'Seleccionar token según la rama'
 
-          # Deploy
+          # Deploy con artefacto pre-compilado
           - task: AzureStaticWebApp@0
             displayName: 'Deploy to Azure Static Web App'
             inputs:
-              app_location: '/'
-              output_location: 'dist'
+              app_location: '$(Pipeline.Workspace)/dist'
+              skip_app_build: true
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
