@@ -1,72 +1,44 @@
-import { useState } from 'react';
-import { Ticket, Plane, Calendar, CreditCard, MapPin, Briefcase } from 'lucide-react';
-import { Button } from '../ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { useState, useEffect } from 'react';
+import { Ticket, Plane, Calendar, MapPin, Briefcase } from 'lucide-react';
+import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Separator } from '../ui/separator';
+import { obtenerReservas } from '../../api/client/reservas.api';
+import type { ReservaResponse } from '../../api/types';
 
-type Booking = {
-  id: string;
-  bookingNumber: string;
-  flightNumber: string;
-  origin: string;
-  destination: string;
-  departureDate: string;
-  departureTime: string;
-  passengerName: string;
-  seat: string;
-  luggage: string;
-  price: number;
-};
+
 
 type MyBookingsProps = {
-  userId: string;
+  userId: number;
 };
 
 export default function MyBookings({ userId }: MyBookingsProps) {
-  const [bookings] = useState<Booking[]>([
-    {
-      id: '2',
-      bookingNumber: 'BK-123457',
-      flightNumber: 'SL202',
-      origin: 'Barcelona (BCN)',
-      destination: 'París (CDG)',
-      departureDate: '2024-02-20',
-      departureTime: '14:30',
-      passengerName: 'Juan Pérez',
-      seat: '15C',
-      luggage: 'Equipaje Facturado',
-      price: 104.99,
-    },
-    {
-      id: '3',
-      bookingNumber: 'BK-123458',
-      flightNumber: 'SL303',
-      origin: 'Madrid (MAD)',
-      destination: 'Londres (LHR)',
-      departureDate: '2024-03-05',
-      departureTime: '10:00',
-      passengerName: 'Juan Pérez',
-      seat: '8B',
-      luggage: 'Equipaje Facturado',
-      price: 114.99,
-    },
-    {
-      id: '4',
-      bookingNumber: 'BK-123459',
-      flightNumber: 'SL404',
-      origin: 'Madrid (MAD)',
-      destination: 'Roma (FCO)',
-      departureDate: '2024-01-15',
-      departureTime: '16:00',
-      passengerName: 'Juan Pérez',
-      seat: '10C',
-      luggage: 'Equipaje de Mano',
-      price: 69.99,
-    },
-  ]);
+  const [bookings, setBookings] = useState<ReservaResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const upcomingBookings = bookings;
+  useEffect(() => {
+    const cargarReservas = async () => {
+      try {
+        const data = await obtenerReservas(userId);
+        setBookings(data);
+      } catch (error) {
+        console.error('Error al cargar reservas:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarReservas();
+  }, [userId]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sky-600">Mis Reservas</h2>
+          <p className="text-gray-600">Cargando reservas...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -77,8 +49,8 @@ export default function MyBookings({ userId }: MyBookingsProps) {
 
       <div>
         <div className="grid gap-4">
-          {upcomingBookings.map((booking) => (
-            <Card key={booking.id} className="hover:shadow-lg transition-shadow">
+          {bookings.map((booking) => (
+            <Card key={booking.id_reserva} className="hover:shadow-lg transition-shadow">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between gap-4">
                   <div className="flex-1">
@@ -89,10 +61,10 @@ export default function MyBookings({ userId }: MyBookingsProps) {
                         </div>
                         <div>
                           <p className="text-sm text-gray-500">Reserva</p>
-                          <p className="text-gray-800">{booking.bookingNumber}</p>
+                          <p className="text-gray-800">#{booking.id_reserva}</p>
                         </div>
                       </div>
-                      <Badge className="bg-green-100 text-green-700">Pagada</Badge>
+                      <Badge className="bg-green-100 text-green-700">Confirmada</Badge>
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-4">
@@ -101,14 +73,7 @@ export default function MyBookings({ userId }: MyBookingsProps) {
                           <Plane className="w-4 h-4 text-sky-500" />
                           <div>
                             <p className="text-sm text-gray-500">Vuelo</p>
-                            <p className="text-gray-800">{booking.flightNumber}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-sky-500" />
-                          <div>
-                            <p className="text-sm text-gray-500">Ruta</p>
-                            <p className="text-gray-800">{booking.origin} → {booking.destination}</p>
+                            <p className="text-gray-800">{booking.vuelo}</p>
                           </div>
                         </div>
                       </div>
@@ -117,17 +82,10 @@ export default function MyBookings({ userId }: MyBookingsProps) {
                         <div className="flex items-center gap-2">
                           <Calendar className="w-4 h-4 text-sky-500" />
                           <div>
-                            <p className="text-sm text-gray-500">Fecha y Hora</p>
+                            <p className="text-sm text-gray-500">Fecha de Salida</p>
                             <p className="text-gray-800">
-                              {new Date(booking.departureDate).toLocaleDateString('es-ES')} - {booking.departureTime}
+                              {new Date(booking.fecha_salida).toLocaleDateString('es-ES')}
                             </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Briefcase className="w-4 h-4 text-sky-500" />
-                          <div>
-                            <p className="text-sm text-gray-500">Asiento / Equipaje</p>
-                            <p className="text-gray-800">{booking.seat} / {booking.luggage}</p>
                           </div>
                         </div>
                       </div>
@@ -136,8 +94,8 @@ export default function MyBookings({ userId }: MyBookingsProps) {
 
                   <div className="flex flex-col justify-between items-end md:border-l md:pl-6">
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">Total Pagado</p>
-                      <p className="text-2xl text-green-600">€{booking.price}</p>
+                      <p className="text-sm text-gray-500">Total</p>
+                      <p className="text-2xl text-green-600">€{booking.total}</p>
                     </div>
                   </div>
                 </div>
@@ -148,7 +106,7 @@ export default function MyBookings({ userId }: MyBookingsProps) {
       </div>
 
 
-      {bookings.length === 0 && (
+      {!loading && bookings.length === 0 && (
         <Card>
           <CardContent className="p-12 text-center">
             <Ticket className="w-16 h-16 text-gray-300 mx-auto mb-4" />

@@ -6,6 +6,7 @@ import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Alert, AlertDescription } from '../ui/alert';
+import { emailService } from '../../services/emailService';
 
 const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
 const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
@@ -24,6 +25,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
   const [paymentComplete, setPaymentComplete] = useState(false);
   const [paymentFailed, setPaymentFailed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [formData, setFormData] = useState({
     cardNumber: '',
     cardName: '',
@@ -52,8 +54,6 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     setPaymentFailed(false);
 
     try {
-
-
 
       // 2. Crear un formulario HTML oculto que apunta a PayPal Sandbox
       const form = document.createElement('form');
@@ -188,9 +188,13 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600">
+                <Button 
+                  type="submit" 
+                  disabled={isProcessing || sendingEmail}
+                  className="w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-400"
+                >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  Pagar €{booking.totalPrice}
+                  {isProcessing ? 'Procesando pago...' : sendingEmail ? 'Enviando confirmación...' : `Pagar €${booking.totalPrice}`}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">

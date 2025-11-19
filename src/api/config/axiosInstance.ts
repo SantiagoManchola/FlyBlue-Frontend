@@ -3,57 +3,35 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL || "http://localhost:8000"}/v1`,
+  baseURL: `${import.meta.env.VITE_API_URL}/v1`,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
+// ✅ Interceptor para agregar el token
 axiosInstance.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = token; // Ya incluye "bearer"
+    config.headers.Authorization = `Bearer ${token}`;
+    console.log("🔑 Token agregado al header");
   }
   return config;
 });
 
-// Interceptor para manejar errores
+// ✅ Interceptor para manejar errores
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response) {
-      // Errores de autenticación
-      if (error.response.status === 401) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.href = "/login";
-      }
-      
-      // Errores de autorización
-      if (error.response.status === 403) {
-        if (window.location.pathname.startsWith("/admin")) {
-          window.location.href = "/"; // Redirigir a home si intenta acceder a rutas de admin
-        }
-      }
+    console.error(
+      "❌ Error en request:",
+      error.response?.data || error.message
+    );
 
-      // Error personalizado para recursos no encontrados
-      if (error.response.status === 404) {
-        const errorDetail = error.response.data?.detail || "Recurso no encontrado";
-        error.message = errorDetail;
-      }
-
-      // Error de validación
-      if (error.response.status === 422) {
-        const validationErrors = error.response.data?.detail || "Error de validación";
-        error.message = validationErrors;
-      }
-
-      // Errores de negocio (400)
-      if (error.response.status === 400) {
-        const businessError = error.response.data?.detail || "Error en la operación";
-        error.message = businessError;
-      }
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      window.location.href = "/login";
     }
     return Promise.reject(error);
   }
