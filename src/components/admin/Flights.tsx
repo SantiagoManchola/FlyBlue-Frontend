@@ -1,117 +1,242 @@
-import { useState } from 'react';
-import { Plus, Plane, Eye } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Plane, Eye, Loader2, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-
-type Flight = {
-  id: string;
-  flightCode: string;
-  origin: string;
-  originCity: string;
-  destination: string;
-  destinationCity: string;
-  departureDate: string;
-  departureTime: string;
-  arrivalTime: string;
-  price: number;
-};
+import { adminService } from '../../services/adminService';
+import { VueloResponse, CiudadResponse } from '../../api/types';
+import { toast } from 'sonner';
 
 type FlightsProps = {
   onViewDetail?: (flightId: string) => void;
 };
 
-// Mock cities data
-const cities = [
-  { code: 'MAD', name: 'Madrid' },
-  { code: 'BCN', name: 'Barcelona' },
-  { code: 'CDG', name: 'París' },
-  { code: 'LHR', name: 'Londres' },
-  { code: 'FCO', name: 'Roma' },
-];
-
 export default function Flights({ onViewDetail }: FlightsProps = {}) {
-  const [flights, setFlights] = useState<Flight[]>([
-    {
-      id: '1',
-      flightCode: 'FB101',
-      origin: 'MAD',
-      originCity: 'Madrid',
-      destination: 'BCN',
-      destinationCity: 'Barcelona',
-      departureDate: '2024-02-15',
-      departureTime: '08:00',
-      arrivalTime: '09:15',
-      price: 49.99,
-    },
-    {
-      id: '2',
-      flightCode: 'FB202',
-      origin: 'BCN',
-      originCity: 'Barcelona',
-      destination: 'CDG',
-      destinationCity: 'París',
-      departureDate: '2024-02-15',
-      departureTime: '14:30',
-      arrivalTime: '16:45',
-      price: 79.99,
-    },
-    {
-      id: '3',
-      flightCode: 'FB303',
-      origin: 'MAD',
-      originCity: 'Madrid',
-      destination: 'LHR',
-      destinationCity: 'Londres',
-      departureDate: '2024-02-16',
-      departureTime: '10:00',
-      arrivalTime: '11:30',
-      price: 89.99,
-    },
-  ]);
-
+  const [flights, setFlights] = useState<any[]>([]);
+  const [cities, setCities] = useState<CiudadResponse[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchParams, setSearchParams] = useState({
+    origen: '',
+    destino: '',
+    fecha: '',
+  });
   const [formData, setFormData] = useState({
-    flightCode: '',
-    origin: '',
-    destination: '',
-    departureDate: '',
-    departureTime: '',
-    arrivalTime: '',
-    price: '',
+    id_origen: '',
+    id_destino: '',
+    fecha_salida: '',
+    hora_salida: '',
+    fecha_llegada: '',
+    hora_llegada: '',
+    precio_base: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const originCity = cities.find(c => c.code === formData.origin)?.name || '';
-    const destinationCity = cities.find(c => c.code === formData.destination)?.name || '';
-    
-    const newFlight: Flight = {
-      id: Date.now().toString(),
-      flightCode: formData.flightCode,
-      origin: formData.origin,
-      originCity,
-      destination: formData.destination,
-      destinationCity,
-      departureDate: formData.departureDate,
-      departureTime: formData.departureTime,
-      arrivalTime: formData.arrivalTime,
-      price: parseFloat(formData.price),
-    };
-    setFlights([...flights, newFlight]);
-    setFormData({
-      flightCode: '',
-      origin: '',
-      destination: '',
-      departureDate: '',
-      departureTime: '',
-      arrivalTime: '',
-      price: '',
+  useEffect(() => {
+    loadCities();
+    loadAllFlights();
+  }, []);
+
+  const loadCities = async () => {
+    try {
+      const data = await adminService.obtenerCiudades();
+      setCities(data);
+    } catch (error) {
+      console.error('Error al cargar ciudades:', error);
+      toast.error('Error al cargar las ciudades');
+    }
+  };
+
+  const loadAllFlights = async () => {
+    try {
+      console.log('🔄 Flights - Cargando todos los vuelos...');
+      setIsLoading(true);
+      const basicVuelos = await adminService.obtenerTodosLosVuelos();
+      console.log('✅ Flights - Vuelos básicos cargados:', basicVuelos.length);
+      
+      // Para cada vuelo, obtener sus detalles completos y asientos
+      const vuelosConDetalles = await Promise.all(
+        basicVuelos.map(async (vuelo) => {
+          try {
+            const vueloId = (vuelo as any).id_vuelo || (vuelo as any).id;
+            if (!vueloId) {
+              console.warn('⚠️ Vuelo sin ID:', vuelo);
+              return vuelo;
+            }
+            
+            console.log(`🔍 Obteniendo detalles del vuelo ${vueloId}...`);
+            
+            // Llamar a ambos endpoints en paralelo
+            const [detalles, asientos] = await Promise.all([
+              adminService.obtenerVueloPorId(vueloId),
+              adminService.obtenerAsientosVuelo(vueloId)
+            ]);
+            
+            console.log(`✅ Vuelo ${vueloId} - Detalles y asientos obtenidos`);
+            
+            // Combinar la información
+            return {
+              ...detalles,
+              asientos: asientos.asientos,
+              total_asientos: asientos.total_asientos || asientos.asientos?.length || 0
+            };
+          } catch (error) {
+            console.error(`❌ Error al cargar detalles del vuelo:`, error);
+            // Si falla, retornar el vuelo básico
+            return vuelo;
+          }
+        })
+      );
+      
+      console.log('✅ Flights - Todos los vuelos con detalles cargados:', vuelosConDetalles);
+      
+      // Ordenar por fecha de salida (más recientes primero)
+      const vuelosOrdenados = vuelosConDetalles.sort((a, b) => {
+        const fechaA = new Date(a.fecha_salida).getTime();
+        const fechaB = new Date(b.fecha_salida).getTime();
+        return fechaA - fechaB; // Orden ascendente (próximos vuelos primero)
+      });
+      
+      setFlights(vuelosOrdenados);
+    } catch (error) {
+      console.error('❌ Flights - Error al cargar vuelos:', error);
+      toast.error('Error al cargar los vuelos');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSearch = async () => {
+    if (!searchParams.origen || !searchParams.destino || !searchParams.fecha) {
+      toast.error('Por favor completa todos los campos de búsqueda');
+      return;
+    }
+
+    try {
+      setIsSearching(true);
+      const data = await adminService.buscarVuelos(
+        parseInt(searchParams.origen),
+        parseInt(searchParams.destino),
+        searchParams.fecha
+      );
+      console.log('📊 Vuelos encontrados:', data);
+      setFlights(data);
+      if (data.length === 0) {
+        toast.info('No se encontraron vuelos con esos criterios');
+      }
+    } catch (error: any) {
+      console.error('❌ Error al buscar vuelos:', error);
+      toast.error('Error al buscar vuelos');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleClearSearch = async () => {
+    console.log('🔄 Flights - Limpiando búsqueda y cargando todos los vuelos...');
+    setSearchParams({
+      origen: '',
+      destino: '',
+      fecha: ''
     });
-    setIsDialogOpen(false);
+    await loadAllFlights();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validación manual de campos requeridos
+    if (!formData.id_origen) {
+      toast.error('Por favor selecciona una ciudad de origen');
+      return;
+    }
+    
+    if (!formData.id_destino) {
+      toast.error('Por favor selecciona una ciudad de destino');
+      return;
+    }
+    
+    if (formData.id_origen === formData.id_destino) {
+      toast.error('La ciudad de origen y destino deben ser diferentes');
+      return;
+    }
+    
+    if (!formData.fecha_salida || !formData.hora_salida) {
+      toast.error('Por favor completa la fecha y hora de salida');
+      return;
+    }
+    
+    if (!formData.fecha_llegada || !formData.hora_llegada) {
+      toast.error('Por favor completa la fecha y hora de llegada');
+      return;
+    }
+    
+    if (!formData.precio_base || parseFloat(formData.precio_base) <= 0) {
+      toast.error('Por favor ingresa un precio válido mayor a 0');
+      return;
+    }
+    
+    try {
+      setIsLoading(true);
+      
+      const fecha_salida_completa = `${formData.fecha_salida}T${formData.hora_salida}:00`;
+      const fecha_llegada_completa = `${formData.fecha_llegada}T${formData.hora_llegada}:00`;
+      
+      // Validar que la fecha de llegada sea posterior a la de salida
+      const salida = new Date(fecha_salida_completa);
+      const llegada = new Date(fecha_llegada_completa);
+      
+      if (llegada <= salida) {
+        toast.error('La fecha de llegada debe ser posterior a la fecha de salida');
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log('📤 Enviando vuelo:', {
+        id_origen: parseInt(formData.id_origen),
+        id_destino: parseInt(formData.id_destino),
+        fecha_salida: fecha_salida_completa,
+        fecha_llegada: fecha_llegada_completa,
+        precio_base: parseFloat(formData.precio_base)
+      });
+      
+      const response = await adminService.crearVuelo({
+        id_origen: parseInt(formData.id_origen),
+        id_destino: parseInt(formData.id_destino),
+        fecha_salida: fecha_salida_completa,
+        fecha_llegada: fecha_llegada_completa,
+        precio_base: parseFloat(formData.precio_base)
+      });
+      
+      console.log('✅ Vuelo creado:', response);
+      toast.success(`Vuelo ${response.codigo} creado exitosamente con ID: ${response.id_vuelo}`);
+      console.info(`📌 Puedes ver el vuelo en: /admin/flights/${response.id_vuelo}`);
+      
+      // Limpiar formulario y cerrar diálogo
+      setFormData({
+        id_origen: '',
+        id_destino: '',
+        fecha_salida: '',
+        hora_salida: '',
+        fecha_llegada: '',
+        hora_llegada: '',
+        precio_base: '',
+      });
+      setIsDialogOpen(false);
+      
+      // Si hay parámetros de búsqueda, recargar resultados
+      if (searchParams.origen && searchParams.destino && searchParams.fecha) {
+        await handleSearch();
+      }
+    } catch (error: any) {
+      console.error('Error al crear vuelo:', error);
+      toast.error(error.response?.data?.detail || 'Error al crear el vuelo');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -119,7 +244,7 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-gray-800">Gestión de Vuelos</h2>
-          <p className="text-gray-600 text-sm">Administra los vuelos disponibles - 100 asientos por vuelo</p>
+          <p className="text-gray-600 text-sm">Busca y administra los vuelos disponibles</p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -134,164 +259,308 @@ export default function Flights({ onViewDetail }: FlightsProps = {}) {
               <DialogDescription>Completa los datos del vuelo (100 asientos por defecto)</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="flightCode">Código de Vuelo</Label>
-                <Input
-                  id="flightCode"
-                  value={formData.flightCode}
-                  onChange={(e) => setFormData({ ...formData, flightCode: e.target.value.toUpperCase() })}
-                  placeholder="FB101"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="origin">Origen <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={formData.id_origen} 
+                    onValueChange={(value: string) => setFormData({ ...formData, id_origen: value })}
+                    disabled={isLoading}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona ciudad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem key={city.id_ciudad} value={city.id_ciudad.toString()}>
+                          {city.nombre} ({city.codigo})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="destination">Destino <span className="text-red-500">*</span></Label>
+                  <Select 
+                    value={formData.id_destino} 
+                    onValueChange={(value: string) => setFormData({ ...formData, id_destino: value })}
+                    disabled={isLoading}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecciona ciudad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cities.map((city) => (
+                        <SelectItem key={city.id_ciudad} value={city.id_ciudad.toString()}>
+                          {city.nombre} ({city.codigo})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="origin">Origen</Label>
-                  <Select value={formData.origin} onValueChange={(value) => setFormData({ ...formData, origin: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona ciudad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name} ({city.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="fechaSalida">Fecha Salida</Label>
+                  <Input
+                    id="fechaSalida"
+                    type="date"
+                    value={formData.fecha_salida}
+                    onChange={(e) => setFormData({ ...formData, fecha_salida: e.target.value })}
+                    disabled={isLoading}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="destination">Destino</Label>
-                  <Select value={formData.destination} onValueChange={(value) => setFormData({ ...formData, destination: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona ciudad" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cities.map((city) => (
-                        <SelectItem key={city.code} value={city.code}>
-                          {city.name} ({city.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="horaSalida">Hora Salida</Label>
+                  <Input
+                    id="horaSalida"
+                    type="time"
+                    value={formData.hora_salida}
+                    onChange={(e) => setFormData({ ...formData, hora_salida: e.target.value })}
+                    disabled={isLoading}
+                    required
+                  />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="departureDate">Fecha</Label>
+                  <Label htmlFor="fechaLlegada">Fecha Llegada</Label>
                   <Input
-                    id="departureDate"
+                    id="fechaLlegada"
                     type="date"
-                    value={formData.departureDate}
-                    onChange={(e) => setFormData({ ...formData, departureDate: e.target.value })}
+                    value={formData.fecha_llegada}
+                    onChange={(e) => setFormData({ ...formData, fecha_llegada: e.target.value })}
+                    disabled={isLoading}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="departureTime">Hora Salida</Label>
+                  <Label htmlFor="horaLlegada">Hora Llegada</Label>
                   <Input
-                    id="departureTime"
+                    id="horaLlegada"
                     type="time"
-                    value={formData.departureTime}
-                    onChange={(e) => setFormData({ ...formData, departureTime: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arrivalTime">Hora Llegada</Label>
-                  <Input
-                    id="arrivalTime"
-                    type="time"
-                    value={formData.arrivalTime}
-                    onChange={(e) => setFormData({ ...formData, arrivalTime: e.target.value })}
+                    value={formData.hora_llegada}
+                    onChange={(e) => setFormData({ ...formData, hora_llegada: e.target.value })}
+                    disabled={isLoading}
                     required
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="price">Precio (€)</Label>
+                <Label htmlFor="price">Precio Base (€)</Label>
                 <Input
                   id="price"
                   type="number"
                   step="0.01"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  value={formData.precio_base}
+                  onChange={(e) => setFormData({ ...formData, precio_base: e.target.value })}
                   placeholder="49.99"
+                  disabled={isLoading}
                   required
                 />
               </div>
-              <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600">
-                Agregar Vuelo
+              <Button type="submit" className="w-full bg-sky-500 hover:bg-sky-600" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creando vuelo...
+                  </>
+                ) : (
+                  'Agregar Vuelo'
+                )}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="grid gap-4">
-        {flights.map((flight) => (
-          <Card key={flight.id} className="hover:shadow-md transition-all bg-white border border-gray-100">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-xs text-gray-500">{flight.flightCode}</span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(flight.departureDate).toLocaleDateString('es-ES', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="text-center">
-                      <p className="text-2xl text-gray-900 mb-1">{flight.departureTime}</p>
-                      <p className="text-gray-600 mb-0.5">{flight.origin}</p>
-                      <p className="text-xs text-gray-400">{flight.originCity}</p>
-                    </div>
-                    
-                    <div className="flex-1 flex flex-col items-center gap-2">
-                      <div className="flex items-center w-full">
-                        <div className="h-px bg-gray-200 flex-1"></div>
-                        <div className="px-3">
-                          <Plane className="w-4 h-4 text-gray-400 rotate-90" />
-                        </div>
-                        <div className="h-px bg-gray-200 flex-1"></div>
-                      </div>
-                      <span className="text-xs text-gray-500">100 asientos</span>
-                    </div>
-
-                    <div className="text-center">
-                      <p className="text-2xl text-gray-900 mb-1">{flight.arrivalTime}</p>
-                      <p className="text-gray-600 mb-0.5">{flight.destination}</p>
-                      <p className="text-xs text-gray-400">{flight.destinationCity}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-end gap-4 md:pl-6 md:border-l">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-500 mb-1">Precio</p>
-                    <p className="text-3xl text-sky-500">€{flight.price}</p>
-                  </div>
-                  {onViewDetail && (
-                    <Button
-                      className="bg-sky-500 hover:bg-sky-600 w-full min-w-[180px] rounded-4xl"
-                      onClick={() => onViewDetail(flight.id)}
-                    >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver Detalle
-                    </Button>
-                  )}
-                </div>
+      {/* Buscador de vuelos */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Search className="w-5 h-5 text-sky-500" />
+              <h3 className="text-lg font-semibold text-gray-800">Buscar Vuelos</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="searchOrigin">Origen <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={searchParams.origen} 
+                  onValueChange={(value) => setSearchParams({ ...searchParams, origen: value })}
+                  disabled={isSearching}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona origen" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id_ciudad} value={city.id_ciudad.toString()}>
+                        {city.nombre} ({city.codigo})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="searchDestination">Destino <span className="text-red-500">*</span></Label>
+                <Select 
+                  value={searchParams.destino} 
+                  onValueChange={(value) => setSearchParams({ ...searchParams, destino: value })}
+                  disabled={isSearching}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona destino" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {cities.map((city) => (
+                      <SelectItem key={city.id_ciudad} value={city.id_ciudad.toString()}>
+                        {city.nombre} ({city.codigo})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="searchDate">Fecha <span className="text-red-500">*</span></Label>
+                <Input
+                  id="searchDate"
+                  type="date"
+                  value={searchParams.fecha}
+                  onChange={(e) => setSearchParams({ ...searchParams, fecha: e.target.value })}
+                  disabled={isSearching}
+                />
+              </div>
+              <div className="flex items-end gap-2">
+                <Button 
+                  onClick={handleSearch} 
+                  className="flex-1 bg-sky-500 hover:bg-sky-600"
+                  disabled={isSearching}
+                >
+                  {isSearching ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Buscando...
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-4 h-4 mr-2" />
+                      Buscar
+                    </>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleClearSearch}
+                  variant="outline"
+                  className="flex-1"
+                  disabled={isSearching || isLoading}
+                >
+                  Ver Todos
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {(isSearching || isLoading) ? (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-sky-500 mb-3" />
+          <p className="text-gray-600">{isSearching ? 'Buscando vuelos...' : 'Cargando vuelos...'}</p>
+        </div>
+      ) : flights.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <Plane className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <p>No se encontraron vuelos</p>
+          <p className="text-sm mt-2">Usa el buscador arriba para encontrar vuelos o crea uno nuevo</p>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {flights.map((flight) => {
+            const salidaDate = new Date(flight.fecha_salida);
+            const llegadaDate = new Date(flight.fecha_llegada);
+            const flightId = flight.id || flight.id_vuelo;
+            
+            // Extraer ciudades del código si no están disponibles
+            const codigoParts = flight.codigo?.split('-') || [];
+            const ciudadOrigen = flight.ciudad_salida || codigoParts[0] || 'N/A';
+            const ciudadDestino = flight.ciudad_llegada || codigoParts[1] || 'N/A';
+            
+            return (
+              <Card key={flightId} className="hover:shadow-md transition-all bg-white border border-gray-100">
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-4">
+                        <span className="text-xs text-gray-500">{flight.codigo}</span>
+                        <span className="text-xs text-gray-400">•</span>
+                        <span className="text-xs text-gray-500">
+                          {salidaDate.toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-6">
+                        <div className="text-center">
+                          <p className="text-2xl text-gray-900 mb-1">
+                            {salidaDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <p className="text-gray-600 mb-0.5">{ciudadOrigen}</p>
+                        </div>
+                        
+                        <div className="flex-1 flex flex-col items-center gap-2">
+                          <div className="flex items-center w-full">
+                            <div className="h-px bg-gray-200 flex-1"></div>
+                            <div className="px-3">
+                              <Plane className="w-4 h-4 text-gray-400 rotate-90" />
+                            </div>
+                            <div className="h-px bg-gray-200 flex-1"></div>
+                          </div>
+                          {flight.asientos_totales && (
+                            <span className="text-xs text-gray-500">{flight.asientos_totales} asientos</span>
+                          )}
+                        </div>
+
+                        <div className="text-center">
+                          <p className="text-2xl text-gray-900 mb-1">
+                            {llegadaDate.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <p className="text-gray-600 mb-0.5">{ciudadDestino}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-4 md:pl-6 md:border-l">
+                      <div className="text-right">
+                        <p className="text-xs text-gray-500 mb-1">Precio</p>
+                        <p className="text-3xl text-sky-500">€{flight.precio_base}</p>
+                      </div>
+                      {onViewDetail && (
+                        <Button
+                          className="bg-sky-500 hover:bg-sky-600 w-full min-w-[180px] rounded-4xl"
+                          onClick={() => {
+                            console.log('👁️ Ver Detalle clickeado - Flight ID:', flightId);
+                            onViewDetail(flightId.toString());
+                          }}
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          Ver Detalle
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
