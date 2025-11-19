@@ -16,7 +16,7 @@ interface ReservaEmailData {
 export const emailService = {
   enviarCorreo: async (data: EmailData) => {
     try {
-      const response = await fetch('/api/email/send', {
+      const response = await fetch('http://localhost:3001/api/email/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
@@ -79,7 +79,7 @@ export const emailService = {
           <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <ul style="line-height: 1.8;">
               <li><strong>Reserva:</strong> ${codigoReserva}</li>
-              <li><strong>Monto:</strong> $${monto.toLocaleString()}</li>
+              <li><strong>Monto:</strong> €${monto.toLocaleString()}</li>
               <li><strong>Fecha:</strong> ${new Date().toLocaleDateString('es-ES')}</li>
             </ul>
           </div>
@@ -87,7 +87,7 @@ export const emailService = {
       </div>
     `;
 
-    return this.enviarCorreo({
+    return emailService.enviarCorreo({
       to: correo,
       subject: `Confirmación de Pago - ${codigoReserva}`,
       html

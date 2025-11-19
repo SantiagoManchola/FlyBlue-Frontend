@@ -8,12 +8,15 @@ import { Separator } from "../../components/ui/separator";
 import { clientService } from "../../services/clientService";
 import { obtenerVueloPorId } from "../../api/admin/vuelos.api";
 import { obtenerEquipajes } from "../../api/admin/equipajes.api";
+import { emailService } from "../../services/emailService";
+import { useUser } from "../../hooks/useUser";
 import { toast } from "sonner";
 import type { VueloResponse, EquipajeResponse } from "../../api/types";
 
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const user = useUser();
   const [loading, setLoading] = useState(true);
   const [reserva, setReserva] = useState<any>(null);
   const [vueloData, setVueloData] = useState<VueloResponse | null>(null);
@@ -76,7 +79,28 @@ export default function PaymentSuccessPage() {
         console.log('✅ Equipaje obtenido:', equipaje);
         setEquipajeData(equipaje || null);
 
-        // ✅ PASO 4: Limpiar sessionStorage DESPUÉS de guardar los datos
+        // ✅ PASO 4: Enviar correo de confirmación de pago exitoso
+        const userEmail = bookingData.userEmail || localStorage.getItem('userEmail');
+        console.log('📧 Email del usuario:', userEmail);
+        if (userEmail) {
+          try {
+            console.log('📧 Enviando correo a:', userEmail);
+            const emailResult = await emailService.enviarConfirmacionPago(
+              userEmail,
+              `RES-${reservaResponse.id_reserva}`,
+              bookingData.totalPrice
+            );
+            console.log('✅ Correo de confirmación enviado:', emailResult);
+            toast.success('Correo de confirmación enviado');
+          } catch (emailError) {
+            console.error('❌ Error enviando correo de confirmación:', emailError);
+            toast.error('Error enviando correo de confirmación');
+          }
+        } else {
+          console.warn('⚠️ No se encontró email del usuario para enviar correo');
+        }
+
+        // ✅ PASO 5: Limpiar sessionStorage DESPUÉS de guardar los datos
         sessionStorage.removeItem('bookingData');
         sessionStorage.removeItem('paymentData');
       } catch (err: any) {

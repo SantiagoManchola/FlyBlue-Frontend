@@ -49,20 +49,6 @@ export const clientService = {
     crearReserva: async (data: ReservaRequest) => {
         try {
             const reserva = await crearReserva(data);
-            
-            try {
-                await emailService.enviarConfirmacionReserva({
-                    nombre: data.nombre || 'Cliente',
-                    correo: data.correo || '',
-                    codigoReserva: reserva.codigo || 'N/A',
-                    vuelo: `${data.origen} → ${data.destino}`,
-                    fecha: data.fecha_vuelo || '',
-                    asientos: data.asientos || []
-                });
-            } catch (emailError) {
-                console.warn('Error enviando correos:', emailError);
-            }
-            
             return reserva;
         } catch (error) {
             console.error("Error al crear reserva:", error);
@@ -82,17 +68,6 @@ export const clientService = {
     procesarPago: async (reservaId: number, data: PagoRequest) => {
         try {
             const pago = await procesarPago(reservaId, data);
-            
-            try {
-                await emailService.enviarConfirmacionPago(
-                    data.correo || '',
-                    `RES-${reservaId}`,
-                    data.monto || 0
-                );
-            } catch (emailError) {
-                console.warn('Error enviando correos:', emailError);
-            }
-            
             return pago;
         } catch (error) {
             console.error("Error al procesar pago:", error);
