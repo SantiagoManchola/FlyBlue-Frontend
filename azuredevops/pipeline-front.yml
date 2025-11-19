@@ -1,0 +1,101 @@
+# =========================================================
+# PIPELINE ÚNICO CI/CD - FLYBLUE FRONTEND (VITE + REACT)
+# =========================================================
+
+trigger:
+  branches:
+    include:
+      - dev
+      - test
+      - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  - name: nodeVersion
+    value: '18.x'
+  - name: buildDir
+    value: 'dist'
+  - group: 'VG-FLYBLUE-FRONT'   # Variable Group correcto
+
+stages:
+  - stage: BuildAndDeploy
+    displayName: 'Build & Deploy Frontend'
+    jobs:
+
+      # =====================================================
+      # JOB 1 → BUILD
+      # =====================================================
+      - job: Build
+        displayName: 'Build Frontend (Vite + React)'
+        steps:
+
+          # Instalar Node
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '$(nodeVersion)'
+            displayName: 'Instalar Node.js'
+
+          # Instalar dependencias
+          - script: |
+              npm install
+            displayName: 'Instalar dependencias'
+
+          # Crear archivo .env.production dinámico
+          - script: |
+              echo "VITE_API_URL=$(VITE_API_URL)" > .env.production
+              echo "VITE_API_BASE_URL=$(VITE_API_BASE_URL)" >> .env.production
+            displayName: "Crear archivo .env.production"
+
+          # Compilar
+          - script: |
+              npm run build
+            displayName: 'Compilar con Vite'
+
+          # Publicar artefacto dist
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(System.DefaultWorkingDirectory)/$(buildDir)'
+              artifact: 'dist'
+            displayName: 'Publicar artefacto compilado'
+
+      # =====================================================
+      # JOB 2 → DEPLOY
+      # =====================================================
+      - job: Deploy
+        displayName: 'Desplegar a Azure Static Web App'
+        dependsOn: Build
+        steps:
+
+          # Descargar artefacto dist/
+          - download: current
+            artifact: dist
+
+          # Seleccionar TOKEN según rama
+          - script: |
+              echo "Branch detectada: $(Build.SourceBranch)"
+
+              if [ "$(Build.SourceBranch)" = "refs/heads/dev" ]; then
+                echo ">>> Deploy hacia DEV"
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_DEV)"
+
+              elif [ "$(Build.SourceBranch)" = "refs/heads/test" ]; then
+                echo ">>> Deploy hacia TEST"
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_TEST)"
+
+              else
+                echo ">>> Deploy hacia MAIN (Producción)"
+                echo "##vso[task.setvariable variable=DEPLOY_TOKEN]$(AZURE_STATIC_WEB_APP_TOKEN_MAIN)"
+              fi
+            displayName: 'Seleccionar token según la rama'
+
+          # Deploy
+          - task: AzureStaticWebApp@0
+            displayName: 'Deploy to Azure Static Web App'
+            inputs:
+              app_location: '/'
+              output_location: 'dist'
+              azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
+
+

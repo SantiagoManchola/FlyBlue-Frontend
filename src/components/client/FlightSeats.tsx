@@ -1,52 +1,52 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
+import { obtenerAsientosVuelo } from '../../api/admin/vuelos.api';
+import type { Asiento } from '../../api/types';
 
-type Seat = {
-  id: string;
-  row: number;
-  column: string;
-  type: 'economy' | 'premium';
+type SeatWithStatus = Asiento & {
   status: 'available' | 'occupied' | 'selected';
+  type: 'economy' | 'premium';
   price: number;
 };
 
 type FlightSeatsProps = {
-  flightId: string;
+  flightId: number;
 };
 
 export default function FlightSeats({ flightId }: FlightSeatsProps) {
-  const [seats, setSeats] = useState<Seat[]>(() => {
-    const generatedSeats: Seat[] = [];
-    const columns = ['A', 'B', 'C', 'D', 'E', 'F'];
-    const statuses: ('available' | 'occupied')[] = ['available', 'occupied'];
-    
-    for (let row = 1; row <= 30; row++) {
-      for (const column of columns) {
-        const randomStatus = Math.random() > 0.6 ? 'occupied' : 'available';
-        const isPremium = row <= 3;
-        generatedSeats.push({
-          id: `${row}${column}`,
-          row,
-          column,
-          type: isPremium ? 'premium' : 'economy',
-          status: randomStatus,
-          price: isPremium ? 15 : row <= 10 ? 8 : 0,
-        });
+  const [seats, setSeats] = useState<SeatWithStatus[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const cargarAsientos = async () => {
+      try {
+        const data = await obtenerAsientosVuelo(flightId);
+        const seatsWithStatus: SeatWithStatus[] = data.asientos.map(asiento => ({
+          ...asiento,
+          status: asiento.disponible ? 'available' : 'occupied',
+          type: asiento.fila <= 3 ? 'premium' : 'economy',
+          price: asiento.fila <= 3 ? 15 : asiento.fila <= 10 ? 8 : 0
+        }));
+        setSeats(seatsWithStatus);
+      } catch (error) {
+        console.error('Error al cargar asientos:', error);
+      } finally {
+        setLoading(false);
       }
-    }
-    return generatedSeats;
-  });
+    };
+    cargarAsientos();
+  }, [flightId]);
 
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
 
-  const handleSeatClick = (seatId: string) => {
-    const seat = seats.find((s) => s.id === seatId);
+  const handleSeatClick = (seatId: number) => {
+    const seat = seats.find((s) => s.id_asiento === seatId);
     if (seat?.status === 'available') {
       setSeats(
         seats.map((s) =>
-          s.id === seatId
+          s.id_asiento === seatId
             ? { ...s, status: 'selected' as const }
             : s.status === 'selected'
             ? { ...s, status: 'available' as const }
@@ -57,7 +57,7 @@ export default function FlightSeats({ flightId }: FlightSeatsProps) {
     }
   };
 
-  const getSeatColor = (seat: Seat) => {
+  const getSeatColor = (seat: SeatWithStatus) => {
     if (seat.status === 'occupied') return 'bg-gray-300 cursor-not-allowed';
     if (seat.status === 'selected') return 'bg-sky-500 text-white cursor-pointer hover:bg-sky-600';
     if (seat.type === 'premium') return 'bg-purple-200 hover:bg-purple-300 text-purple-800 cursor-pointer';
@@ -72,7 +72,18 @@ export default function FlightSeats({ flightId }: FlightSeatsProps) {
     premium: seats.filter((s) => s.type === 'premium' && s.status === 'available').length,
   };
 
-  const selectedSeatData = seats.find((s) => s.id === selectedSeat);
+  const selectedSeatData = seats.find((s) => s.id_asiento === selectedSeat);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-sky-600">Selección de Asientos - Vuelo {flightId}</h2>
+          <p className="text-gray-600">Cargando asientos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -155,37 +166,41 @@ export default function FlightSeats({ flightId }: FlightSeatsProps) {
                   </div>
                   
                   <div className="space-y-2">
-                    {Array.from({ length: 30 }, (_, i) => i + 1).map((row) => (
+                    {Array.from(new Set(seats.map(s => s.fila))).sort((a, b) => a - b).map((row) => (
                       <div key={row} className="flex items-center justify-center gap-2">
                         <span className="w-8 text-sm text-gray-500 text-right">{row}</span>
                         {['A', 'B', 'C'].map((col) => {
-                          const seat = seats.find((s) => s.row === row && s.column === col);
+                          const seat = seats.find((s) => s.fila === row && s.columna === col);
                           return seat ? (
                             <button
-                              key={seat.id}
-                              onClick={() => handleSeatClick(seat.id)}
+                              key={seat.id_asiento}
+                              onClick={() => handleSeatClick(seat.id_asiento)}
                               disabled={seat.status === 'occupied'}
                               className={`w-10 h-10 rounded text-xs transition-colors ${getSeatColor(seat)}`}
-                              title={`${seat.row}${seat.column} - ${seat.status} ${seat.price > 0 ? `(€${seat.price})` : ''}`}
+                              title={`${seat.fila}${seat.columna} - ${seat.status} ${seat.price > 0 ? `(€${seat.price})` : ''}`}
                             >
-                              {seat.column}
+                              {seat.columna}
                             </button>
-                          ) : null;
+                          ) : (
+                            <div key={`${row}${col}`} className="w-10 h-10"></div>
+                          );
                         })}
                         <div className="w-6"></div>
                         {['D', 'E', 'F'].map((col) => {
-                          const seat = seats.find((s) => s.row === row && s.column === col);
+                          const seat = seats.find((s) => s.fila === row && s.columna === col);
                           return seat ? (
                             <button
-                              key={seat.id}
-                              onClick={() => handleSeatClick(seat.id)}
+                              key={seat.id_asiento}
+                              onClick={() => handleSeatClick(seat.id_asiento)}
                               disabled={seat.status === 'occupied'}
                               className={`w-10 h-10 rounded text-xs transition-colors ${getSeatColor(seat)}`}
-                              title={`${seat.row}${seat.column} - ${seat.status} ${seat.price > 0 ? `(€${seat.price})` : ''}`}
+                              title={`${seat.fila}${seat.columna} - ${seat.status} ${seat.price > 0 ? `(€${seat.price})` : ''}`}
                             >
-                              {seat.column}
+                              {seat.columna}
                             </button>
-                          ) : null;
+                          ) : (
+                            <div key={`${row}${col}`} className="w-10 h-10"></div>
+                          );
                         })}
                         <span className="w-8 text-sm text-gray-500">{row}</span>
                       </div>
@@ -207,8 +222,8 @@ export default function FlightSeats({ flightId }: FlightSeatsProps) {
                 <div className="space-y-4">
                   <div className="bg-sky-50 p-6 rounded-lg text-center">
                     <p className="text-4xl text-sky-600 mb-2">
-                      {selectedSeatData.row}
-                      {selectedSeatData.column}
+                      {selectedSeatData.fila}
+                      {selectedSeatData.columna}
                     </p>
                     <Badge
                       className={
@@ -224,18 +239,18 @@ export default function FlightSeats({ flightId }: FlightSeatsProps) {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Fila:</span>
-                      <span className="text-gray-800">{selectedSeatData.row}</span>
+                      <span className="text-gray-800">{selectedSeatData.fila}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Columna:</span>
-                      <span className="text-gray-800">{selectedSeatData.column}</span>
+                      <span className="text-gray-800">{selectedSeatData.columna}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Posición:</span>
                       <span className="text-gray-800">
-                        {['A', 'F'].includes(selectedSeatData.column)
+                        {['A', 'F'].includes(selectedSeatData.columna)
                           ? 'Ventana'
-                          : ['C', 'D'].includes(selectedSeatData.column)
+                          : ['C', 'D'].includes(selectedSeatData.columna)
                           ? 'Pasillo'
                           : 'Centro'}
                       </span>

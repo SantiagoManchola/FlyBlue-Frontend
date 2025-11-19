@@ -1,64 +1,103 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plane, Briefcase, CreditCard } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
+import { obtenerVueloPorId, obtenerAsientosVuelo } from '../../api/admin/vuelos.api';
+import { obtenerEquipajes } from '../../api/admin/equipajes.api';
+import { crearReserva } from '../../api/client/reservas.api';
+import type { VueloResponse, Asiento, EquipajeResponse } from '../../api/types';
 
 type CreateBookingProps = {
-  flightId: string;
-  userId: string;
+  flightId: number;
+  userId: number;
   onProceedToPayment: (bookingData: {
-    flightId: string;
-    seat: string;
-    luggage: string;
+    flightId: number;
+    seat: number;
+    luggage: number;
     totalPrice: number;
   }) => void;
 };
 
 export default function CreateBooking({ flightId, userId, onProceedToPayment }: CreateBookingProps) {
-  const [selectedSeat, setSelectedSeat] = useState<string | null>(null);
-  const [selectedLuggage, setSelectedLuggage] = useState<string | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
+  const [selectedLuggage, setSelectedLuggage] = useState<number | null>(null);
+  const [flight, setFlight] = useState<VueloResponse | null>(null);
+  const [asientos, setAsientos] = useState<Asiento[]>([]);
+  const [equipajes, setEquipajes] = useState<EquipajeResponse[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock flight data
-  const flight = {
-    flightCode: 'FB101',
-    origin: 'Madrid (MAD)',
-    destination: 'Barcelona (BCN)',
-    departureDate: '15 Feb 2024',
-    departureTime: '08:00',
-    arrivalTime: '09:15',
-    price: 49.99,
-  };
+  useEffect(() => {
+    const cargarDatos = async () => {
+      try {
+        const [flightData, asientosData, equipajesData] = await Promise.all([
+          obtenerVueloPorId(flightId),
+          obtenerAsientosVuelo(flightId),
+          obtenerEquipajes()
+        ]);
+        setFlight(flightData);
+        setAsientos(asientosData.asientos);
+        setEquipajes(equipajesData);
+      } catch (error) {
+        console.error('Error al cargar datos:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    cargarDatos();
+  }, [flightId]);
 
-  const luggageOptions = [
-    { id: '1', name: 'Equipaje de Mano', description: 'Bolso pequeño o mochila (10kg)', price: 0 },
-    { id: '2', name: 'Equipaje Facturado', description: 'Maleta estándar (23kg)', price: 25 },
-    { id: '3', name: 'Equipaje Extra', description: 'Segunda maleta (23kg)', price: 45 },
-    { id: '4', name: 'Equipaje Especial', description: 'Equipos deportivos (32kg)', price: 75 },
-  ];
+  const selectedLuggageOption = equipajes.find((l) => l.id_equipaje === selectedLuggage);
+  const totalPrice = (flight?.precio_base || 0) + (selectedLuggageOption?.precio || 0);
 
-  // Generate seats: 20 rows, 5 seats per row (A-E)
-  const rows = 20;
-  const seatsPerRow = ['A', 'B', 'C', 'D', 'E'];
-  const occupiedSeats = ['3A', '3B', '5C', '7D', '10A', '12E', '15B', '18C']; // Mock occupied seats
-
-  const selectedLuggageOption = luggageOptions.find((l) => l.id === selectedLuggage);
-  const totalPrice = flight.price + (selectedLuggageOption?.price || 0);
-
-  const handleProceedToPayment = () => {
+  const handleProceedToPayment = async () => {
     if (!selectedSeat || !selectedLuggage) {
       alert('Por favor selecciona un asiento y tipo de equipaje');
       return;
     }
-    onProceedToPayment({
-      flightId,
-      seat: selectedSeat,
-      luggage: selectedLuggage,
-      totalPrice,
-    });
+    
+    try {
+      await crearReserva({
+        id_usuario: userId,
+        id_vuelo: flightId,
+        id_asiento: selectedSeat,
+        id_equipaje: selectedLuggage
+      });
+      
+      onProceedToPayment({
+        flightId,
+        seat: selectedSeat,
+        luggage: selectedLuggage,
+        totalPrice,
+      });
+    } catch (error) {
+      console.error('Error al crear reserva:', error);
+      alert('Error al crear la reserva. Por favor, inténtalo de nuevo.');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h2 className="text-gray-800">Nueva Reserva</h2>
+          <p className="text-gray-600">Cargando información del vuelo...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!flight) {
+    return (
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div>
+          <h2 className="text-gray-800">Error</h2>
+          <p className="text-gray-600">No se pudo cargar la información del vuelo.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -101,24 +140,25 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
 
                 {/* Seats */}
                 <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
-                  {Array.from({ length: rows }, (_, rowIndex) => {
-                    const rowNumber = rowIndex + 1;
+                  {Array.from(new Set(asientos.map(a => a.fila))).sort((a, b) => a - b).map((rowNumber) => {
                     return (
                       <div key={rowNumber} className="flex items-center gap-2 justify-center">
                         <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
                         
                         {/* Left side seats (A, B) */}
                         <div className="flex gap-1">
-                          {seatsPerRow.slice(0, 2).map((letter) => {
-                            const seatId = `${rowNumber}${letter}`;
-                            const isOccupied = occupiedSeats.includes(seatId);
-                            const isSelected = selectedSeat === seatId;
+                          {['A', 'B'].map((letter) => {
+                            const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                            if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
+                            
+                            const isOccupied = !asiento.disponible;
+                            const isSelected = selectedSeat === asiento.id_asiento;
                             
                             return (
                               <button
-                                key={seatId}
+                                key={asiento.id_asiento}
                                 disabled={isOccupied}
-                                onClick={() => setSelectedSeat(seatId)}
+                                onClick={() => setSelectedSeat(asiento.id_asiento)}
                                 className={`w-7 h-7 rounded text-xs transition-all ${
                                   isOccupied
                                     ? 'bg-gray-300 cursor-not-allowed'
@@ -138,16 +178,18 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
 
                         {/* Right side seats (C, D, E) */}
                         <div className="flex gap-1">
-                          {seatsPerRow.slice(2).map((letter) => {
-                            const seatId = `${rowNumber}${letter}`;
-                            const isOccupied = occupiedSeats.includes(seatId);
-                            const isSelected = selectedSeat === seatId;
+                          {['C', 'D', 'E'].map((letter) => {
+                            const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                            if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
+                            
+                            const isOccupied = !asiento.disponible;
+                            const isSelected = selectedSeat === asiento.id_asiento;
                             
                             return (
                               <button
-                                key={seatId}
+                                key={asiento.id_asiento}
                                 disabled={isOccupied}
-                                onClick={() => setSelectedSeat(seatId)}
+                                onClick={() => setSelectedSeat(asiento.id_asiento)}
                                 className={`w-7 h-7 rounded text-xs transition-all ${
                                   isOccupied
                                     ? 'bg-gray-300 cursor-not-allowed'
@@ -178,26 +220,26 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-2 gap-4">
-                {luggageOptions.map((luggage) => (
+                {equipajes.map((equipaje) => (
                   <button
-                    key={luggage.id}
-                    onClick={() => setSelectedLuggage(luggage.id)}
+                    key={equipaje.id_equipaje}
+                    onClick={() => setSelectedLuggage(equipaje.id_equipaje)}
                     className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${
-                      selectedLuggage === luggage.id
+                      selectedLuggage === equipaje.id_equipaje
                         ? 'border-sky-500 bg-sky-50'
                         : 'border-gray-200 hover:border-sky-300'
                     }`}
                   >
                     <div className="flex items-start gap-3">
-                      <Briefcase className={`w-5 h-5 mt-1 ${selectedLuggage === luggage.id ? 'text-sky-500' : 'text-gray-400'}`} />
+                      <Briefcase className={`w-5 h-5 mt-1 ${selectedLuggage === equipaje.id_equipaje ? 'text-sky-500' : 'text-gray-400'}`} />
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-gray-800">{luggage.name}</p>
-                          <Badge className={selectedLuggage === luggage.id ? 'bg-sky-500' : 'bg-gray-500'}>
-                            {luggage.price === 0 ? 'Gratis' : `€${luggage.price}`}
+                          <p className="text-gray-800">{equipaje.tipo}</p>
+                          <Badge className={selectedLuggage === equipaje.id_equipaje ? 'bg-sky-500' : 'bg-gray-500'}>
+                            {equipaje.precio === 0 ? 'Gratis' : `€${equipaje.precio}`}
                           </Badge>
                         </div>
-                        <p className="text-xs text-gray-600">{luggage.description}</p>
+                        <p className="text-xs text-gray-600">{equipaje.descripcion}</p>
                       </div>
                     </div>
                   </button>
@@ -219,26 +261,32 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
             <CardContent className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Vuelo</p>
-                <p className="text-gray-800">{flight.flightCode}</p>
+                <p className="text-gray-800">{flight.codigo}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-sm text-gray-500">Ruta</p>
-                <p className="text-gray-800">{flight.origin}</p>
-                <p className="text-gray-800">→ {flight.destination}</p>
+                <p className="text-gray-800">{flight.ciudad_salida}</p>
+                <p className="text-gray-800">→ {flight.ciudad_llegada}</p>
               </div>
               <Separator />
               <div>
                 <p className="text-sm text-gray-500">Fecha y Hora</p>
-                <p className="text-gray-800">{flight.departureDate}</p>
-                <p className="text-gray-800">{flight.departureTime} - {flight.arrivalTime}</p>
+                <p className="text-gray-800">{new Date(flight.fecha_salida).toLocaleDateString('es-ES')}</p>
+                <p className="text-gray-800">
+                  {new Date(flight.fecha_salida).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} - 
+                  {new Date(flight.fecha_llegada).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                </p>
               </div>
               <Separator />
               {selectedSeat && (
                 <>
                   <div>
                     <p className="text-sm text-gray-500">Asiento Seleccionado</p>
-                    <p className="text-gray-800">{selectedSeat}</p>
+                    <p className="text-gray-800">
+                      {asientos.find(a => a.id_asiento === selectedSeat)?.fila}
+                      {asientos.find(a => a.id_asiento === selectedSeat)?.columna}
+                    </p>
                   </div>
                   <Separator />
                 </>
@@ -247,7 +295,7 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
                 <>
                   <div>
                     <p className="text-sm text-gray-500">Equipaje</p>
-                    <p className="text-gray-800">{selectedLuggageOption.name}</p>
+                    <p className="text-gray-800">{selectedLuggageOption.tipo}</p>
                   </div>
                   <Separator />
                 </>
@@ -255,12 +303,12 @@ export default function CreateBooking({ flightId, userId, onProceedToPayment }: 
               <div>
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-600">Vuelo:</span>
-                  <span className="text-gray-800">€{flight.price}</span>
+                  <span className="text-gray-800">€{flight.precio_base}</span>
                 </div>
-                {selectedLuggageOption && selectedLuggageOption.price > 0 && (
+                {selectedLuggageOption && selectedLuggageOption.precio > 0 && (
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Equipaje:</span>
-                    <span className="text-gray-800">€{selectedLuggageOption.price}</span>
+                    <span className="text-gray-800">€{selectedLuggageOption.precio}</span>
                   </div>
                 )}
               </div>
