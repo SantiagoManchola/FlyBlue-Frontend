@@ -40,6 +40,13 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
         const data = sessionStorage.getItem('bookingData');
         if (data) {
           const parsedData = JSON.parse(data);
+          
+          // ✅ Generar bookingNumber una sola vez y guardarlo
+          if (!parsedData.bookingNumber) {
+            parsedData.bookingNumber = `BK-${Date.now()}`;
+            sessionStorage.setItem('bookingData', JSON.stringify(parsedData));
+          }
+          
           setBookingData(parsedData);
 
           // ✅ Obtener datos reales del vuelo
@@ -66,7 +73,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
 
   // Construir datos del booking con información real
   const booking = bookingData && vueloData ? {
-    bookingNumber: `BK-${Date.now()}`,
+    bookingNumber: bookingData.bookingNumber, // ✅ Ya está guardado, no regenerar
     flightNumber: vueloData.codigo || 'N/A',
     origin: vueloData.ciudad_salida || 'N/A',
     destination: vueloData.ciudad_llegada || 'N/A',
@@ -80,8 +87,8 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
       hour: '2-digit', 
       minute: '2-digit' 
     }),
-    passengerName: bookingData.userName || 'Cliente', // ✅ Usar nombre real
-    seat: bookingData.selectedSeat || 'N/A', // ✅ Ahora es "2B"
+    passengerName: bookingData.userName || 'Cliente',
+    seat: bookingData.selectedSeat || 'N/A',
     flightPrice: vueloData.precio_base || 0,
     luggagePrice: equipajeData?.precio || 0,
     totalPrice: bookingData.totalPrice || 0,

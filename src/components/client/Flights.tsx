@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Plane, X, Loader2, Search } from 'lucide-react';
+import { Plane, Loader2, Search } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Card, CardContent } from '../ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Input } from '../ui/input';
 import { clientService } from '../../services/clientService';
-import type { CiudadResponse, VueloBusquedaResponse } from '../../api/types';
+import type { CiudadResponse } from '../../api/types';
 
 type FlightsProps = {
   onBookFlight: (flightId: number) => void;
@@ -53,23 +54,26 @@ export default function Flights({ onBookFlight }: FlightsProps) {
   };
 
   const buscarVuelosHandler = async () => {
-    if (!searchOrigin || !searchDestination || !searchDate) {
+    // ✅ Validar que al menos UN filtro esté seleccionado
+    if (!searchOrigin && !searchDestination && !searchDate) {
       return;
     }
 
     try {
       setIsSearching(true);
       console.log('🔍 Buscando vuelos con:', {
-        origen: parseInt(searchOrigin),
-        destino: parseInt(searchDestination),
-        fecha: searchDate
+        origen: searchOrigin ? parseInt(searchOrigin) : undefined,
+        destino: searchDestination ? parseInt(searchDestination) : undefined,
+        fecha: searchDate || undefined
       });
 
-      const data = await clientService.buscarVuelosConFiltros({
-        origen: parseInt(searchOrigin),
-        destino: parseInt(searchDestination),
-        fecha: searchDate
-      });
+      // ✅ Construir filtros solo con los campos que tienen valor
+      const filtros: { origen?: number; destino?: number; fecha?: string } = {};
+      if (searchOrigin) filtros.origen = parseInt(searchOrigin);
+      if (searchDestination) filtros.destino = parseInt(searchDestination);
+      if (searchDate) filtros.fecha = searchDate;
+
+      const data = await clientService.buscarVuelosConFiltros(filtros);
 
       console.log(`✅ Se encontraron ${data.length} vuelos`);
       setFlights(data);
@@ -90,6 +94,7 @@ export default function Flights({ onBookFlight }: FlightsProps) {
   };
 
   const hasActiveFilters = !!searchOrigin || !!searchDestination || !!searchDate;
+  const canSearch = !!searchOrigin || !!searchDestination || !!searchDate;
 
   return (
     <div className="space-y-6">
@@ -112,7 +117,7 @@ export default function Flights({ onBookFlight }: FlightsProps) {
             <CardContent className="p-6">
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="origin" className="text-gray-700">Desde</Label>
+                  <Label htmlFor="origin" className="text-gray-700">Desde (Opcional)</Label>
                   <Select value={searchOrigin} onValueChange={setSearchOrigin} disabled={isSearching}>
                     <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Seleccionar origen" />
@@ -128,7 +133,7 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="destination" className="text-gray-700">Hacia</Label>
+                  <Label htmlFor="destination" className="text-gray-700">Hacia (Opcional)</Label>
                   <Select value={searchDestination} onValueChange={setSearchDestination} disabled={isSearching}>
                     <SelectTrigger className="bg-white rounded-full h-11 border border-sky-100 shadow-sm hover:border-sky-400 transition-colors">
                       <SelectValue placeholder="Seleccionar destino" />
@@ -144,21 +149,21 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="date" className="text-gray-700">Fecha</Label>
-                  <input
+                  <Label htmlFor="date" className="text-gray-700">Fecha (Opcional)</Label>
+                  <Input
                     id="date"
                     type="date"
                     value={searchDate}
                     onChange={(e) => setSearchDate(e.target.value)}
                     disabled={isSearching}
-                    className="flex h-10 w-full rounded-md border border-input bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-11 w-full rounded-full border border-sky-100 bg-white px-3 py-2 text-sm shadow-sm hover:border-sky-400 transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
 
                 <div className="flex items-end gap-2">
                   <Button
                     onClick={buscarVuelosHandler}
-                    disabled={!searchOrigin || !searchDestination || !searchDate || isSearching || loading}
+                    disabled={!canSearch || isSearching || loading}
                     className="bg-sky-500 hover:bg-sky-600 flex-1"
                   >
                     {isSearching ? (
@@ -179,7 +184,6 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       onClick={clearFilters}
                       disabled={isSearching}
                     >
-                      <X className="w-4 h-4 mr-2" />
                       Limpiar
                     </Button>
                   )}
