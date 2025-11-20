@@ -8,6 +8,14 @@ import { Input } from '../ui/input';
 import { clientService } from '../../services/clientService';
 import type { CiudadResponse } from '../../api/types';
 
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
+
 type FlightsProps = {
   onBookFlight: (flightId: number) => void;
 };
@@ -267,7 +275,9 @@ export default function Flights({ onBookFlight }: FlightsProps) {
                       <div className="flex flex-col items-end gap-4 md:pl-6 md:border-l">
                         <div className="text-right">
                           <p className="text-xs text-gray-500 mb-1">Desde</p>
-                          <p className="text-3xl text-sky-500">€{flight.precio_base}</p>
+                          <p className="text-3xl text-sky-500">
+                            COP {formatCurrencyCOP(flight.precio_base)}
+                          </p>
                         </div>
 
                         <Button
