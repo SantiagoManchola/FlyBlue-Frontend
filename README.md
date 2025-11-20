@@ -16,7 +16,7 @@ Repositorio del frontend de FlyBlue — una base React + Vite (TypeScript soport
 
 ## Comandos locales
 
-Instalar dependencias:
+Instalar dependenciass:
 
 ```bash
 pnpm install
