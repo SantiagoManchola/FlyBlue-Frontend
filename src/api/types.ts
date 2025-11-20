@@ -134,6 +134,7 @@ export interface ReservaRequest {
   id_vuelo: number;
   id_asiento: number;
   id_equipaje: number;
+  total: number;
 }
 
 export interface ReservaCreateResponse {

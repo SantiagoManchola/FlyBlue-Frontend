@@ -15,6 +15,7 @@ export default function ClientBookingPage({ userId }: ClientBookingPageProps) {
     sessionStorage.setItem('bookingData', JSON.stringify({
       ...bookingData,
       userId,
+      userEmail: user?.email || '',
       timestamp: new Date().toISOString(),
     }));
 
