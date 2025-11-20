@@ -125,13 +125,9 @@ stages:
               fi
             displayName: 'Seleccionar token según la rama'
 
-          # Deploy con artefacto pre-compilado
-          # Usar tarea estándar apuntando directamente al build
-          # Opción 1 (recomendada): no saltar build y dejar que la tarea valide estructura
           - task: AzureStaticWebApp@0
-            displayName: 'Deploy to Azure Static Web App (dist)'
-            inputs:
-              app_location: '.'            # raíz del proyecto
-              output_location: 'dist'      # carpeta generada por Vite
-              skip_app_build: true         # ya construimos en el job Build
+            displayName: 'Deploy to Azure Static Web App'
+            inputs:            
+              app_location: 'dist-deploy'      
+              skip_app_build: true         
               azure_static_web_apps_api_token: '$(DEPLOY_TOKEN)'
