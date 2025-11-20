@@ -11,6 +11,12 @@ import { obtenerEquipajes } from "../../api/admin/equipajes.api";
 import { toast } from "sonner";
 import type { VueloResponse, EquipajeResponse } from "../../api/types";
 
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
 export default function PaymentSuccessPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -25,7 +31,7 @@ export default function PaymentSuccessPage() {
     const crearReservaPostPago = async () => {
       try {
         console.log('🔄 Recuperando datos de sessionStorage...');
-        
+
         // Obtener datos guardados
         const bookingDataStr = sessionStorage.getItem('bookingData');
         const payerID = searchParams.get('PayerID');
@@ -176,14 +182,14 @@ export default function PaymentSuccessPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-600 font-medium">Salida:</span>
                   <span className="text-gray-800">
-                    {fechaSalida.toLocaleDateString('es-ES', { 
+                    {fechaSalida.toLocaleDateString('es-ES', {
                       weekday: 'short',
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })} a las {fechaSalida.toLocaleTimeString('es-ES', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })} a las {fechaSalida.toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })}
                   </span>
                 </div>
@@ -196,14 +202,14 @@ export default function PaymentSuccessPage() {
                 <div className="flex justify-between">
                   <span className="text-gray-600 font-medium">Llegada:</span>
                   <span className="text-gray-800">
-                    {fechaLlegada.toLocaleDateString('es-ES', { 
+                    {fechaLlegada.toLocaleDateString('es-ES', {
                       weekday: 'short',
-                      year: 'numeric', 
-                      month: 'short', 
-                      day: 'numeric' 
-                    })} a las {fechaLlegada.toLocaleTimeString('es-ES', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })} a las {fechaLlegada.toLocaleTimeString('es-ES', {
+                      hour: '2-digit',
+                      minute: '2-digit'
                     })}
                   </span>
                 </div>
@@ -230,7 +236,7 @@ export default function PaymentSuccessPage() {
             {/* Precio */}
             <div className="flex justify-between pt-2">
               <span className="text-gray-800 font-bold">Total Pagado:</span>
-              <span className="text-green-600 font-bold">€{bookingInfo?.totalPrice || '0'}</span>
+              <span className="text-green-600 font-bold">COP {formatCurrencyCOP(bookingInfo?.totalPrice || 0)}</span>
             </div>
           </div>
 
