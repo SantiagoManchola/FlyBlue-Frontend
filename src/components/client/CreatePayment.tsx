@@ -1,3 +1,5 @@
+// src/components/client/CreatePayment.tsx
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { CreditCard, Lock, Loader2 } from 'lucide-react';
@@ -6,14 +8,22 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Separator } from '../ui/separator';
-import { clientService } from '../../services/clientService';
 import { obtenerVueloPorId } from '../../api/admin/vuelos.api';
 import { obtenerEquipajes } from '../../api/admin/equipajes.api';
 import { toast } from 'sonner';
 import type { VueloResponse, EquipajeResponse } from '../../api/types';
+import { obtenerTRM } from '../../api/client/trm.api'; // 👈 tu API de TRM
 
 const PAYPAL_BUSINESS_EMAIL = 'tesoreria@flyblue.com';
 const PAYPAL_SANDBOX_URL = 'https://www.sandbox.paypal.com';
+
+// 👉 Helper para formatear COP con puntos de miles
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
 
 type CreatePaymentProps = {
   bookingId: string;
@@ -26,6 +36,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
   const [vueloData, setVueloData] = useState<VueloResponse | null>(null);
   const [equipajeData, setEquipajeData] = useState<EquipajeResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [trm, setTrm] = useState<number | null>(null); // 💱 TRM dinámica
   const [formData, setFormData] = useState({
     cardNumber: '',
     cardName: '',
@@ -33,7 +44,7 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     cvv: '',
   });
 
-  // Obtener datos de la reserva desde sessionStorage al cargar
+  // Obtener datos de la reserva y la TRM al cargar
   useEffect(() => {
     const cargarDatos = async () => {
       try {
@@ -68,7 +79,19 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
       }
     };
 
+    const cargarTRM = async () => {
+      try {
+        const tasa = await obtenerTRM(); // 👈 tu función que llama a la API de TRM
+        setTrm(tasa);
+      } catch (e) {
+        console.error('❌ Error obteniendo TRM:', e);
+        // Fallback si tu API falla
+        setTrm(4500);
+      }
+    };
+
     cargarDatos();
+    cargarTRM();
   }, [navigate]);
 
   // Construir datos del booking con información real
@@ -89,9 +112,9 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     }),
     passengerName: bookingData.userName || 'Cliente',
     seat: bookingData.selectedSeat || 'N/A',
-    flightPrice: vueloData.precio_base || 0,
-    luggagePrice: equipajeData?.precio || 0,
-    totalPrice: bookingData.totalPrice || 0,
+    flightPrice: vueloData.precio_base || 0,        // en COP
+    luggagePrice: equipajeData?.precio || 0,        // en COP
+    totalPrice: bookingData.totalPrice || 0,        // en COP
   } : null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,15 +125,30 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
       return;
     }
 
+    if (!booking || !bookingData) {
+      toast.error('Información de reserva incompleta');
+      return;
+    }
+
+    if (!trm) {
+      toast.error('No se pudo obtener la TRM actual');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
-      // ✅ Solo guardar datos temporales, NO crear reserva
+      // ✅ Guardar datos temporales (solo referencia)
       sessionStorage.setItem('paymentData', JSON.stringify({
         cardName: formData.cardName,
-        amount: booking?.totalPrice,
+        amountCOP: booking.totalPrice,
+        trm,
+        amountEUR: booking.totalPrice / trm,
         timestamp: new Date().toISOString(),
       }));
+
+      // 💱 Convertir COP → EUR para PayPal
+      const amountInEur = booking.totalPrice / trm;
 
       // Enviar a PayPal sin crear la reserva aún
       const form = document.createElement('form');
@@ -129,9 +167,11 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
       addField('business', PAYPAL_BUSINESS_EMAIL);
       addField(
         'item_name',
-        `Reserva Vuelo - ${booking?.flightNumber}`
+        `Reserva Vuelo - ${booking.flightNumber}`
       );
-      addField('amount', booking?.totalPrice.toFixed(2) || '0');
+
+      // 🧾 Monto que recibe PayPal en EUR (dos decimales)
+      addField('amount', amountInEur.toFixed(2));
       addField('currency_code', 'EUR');
 
       const baseUrl = window.location.origin;
@@ -173,7 +213,9 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
     <div className="max-w-4xl mx-auto space-y-6">
       <div>
         <h2 className="text-sky-600">Procesar Pago</h2>
-        <p className="text-gray-600">Completa los datos de tu tarjeta para confirmar tu reserva</p>
+        <p className="text-gray-600">
+          Completa los datos de tu tarjeta para confirmar tu reserva
+        </p>
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -194,7 +236,10 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     placeholder="1234 5678 9012 3456"
                     value={formData.cardNumber}
                     onChange={(e) => {
-                      const value = e.target.value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                      const value = e.target.value
+                        .replace(/\s/g, '')
+                        .replace(/(\d{4})/g, '$1 ')
+                        .trim();
                       setFormData({ ...formData, cardNumber: value });
                     }}
                     maxLength={19}
@@ -209,7 +254,12 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     id="cardName"
                     placeholder="JUAN PEREZ"
                     value={formData.cardName}
-                    onChange={(e) => setFormData({ ...formData, cardName: e.target.value.toUpperCase() })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        cardName: e.target.value.toUpperCase(),
+                      })
+                    }
                     required
                     disabled={isProcessing}
                   />
@@ -241,7 +291,12 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                       type="password"
                       placeholder="123"
                       value={formData.cvv}
-                      onChange={(e) => setFormData({ ...formData, cvv: e.target.value.replace(/\D/g, '') })}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          cvv: e.target.value.replace(/\D/g, ''),
+                        })
+                      }
                       maxLength={3}
                       required
                       disabled={isProcessing}
@@ -256,16 +311,23 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
                     <p className="text-xs text-sky-700">
                       Tus datos están protegidos con cifrado SSL de 256 bits
                     </p>
+                    {trm && (
+                      <p className="text-xs text-sky-700 mt-1">
+                        TRM usada: 1 EUR ≈ COP {formatCurrencyCOP(trm)}
+                      </p>
+                    )}
                   </div>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={isProcessing}
                   className="w-full bg-sky-500 hover:bg-sky-600 disabled:bg-gray-400"
                 >
                   <CreditCard className="w-4 h-4 mr-2" />
-                  {isProcessing ? 'Procesando pago...' : `Pagar €${booking.totalPrice}`}
+                  {isProcessing
+                    ? 'Procesando pago...'
+                    : `Pagar COP ${formatCurrencyCOP(booking.totalPrice)}`}
                 </Button>
 
                 <p className="text-xs text-center text-gray-500">
@@ -313,19 +375,25 @@ export default function CreatePayment({ bookingId }: CreatePaymentProps) {
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Vuelo:</span>
-                  <span className="text-gray-800">€{booking.flightPrice}</span>
+                  <span className="text-gray-800">
+                    COP {formatCurrencyCOP(booking.flightPrice)}
+                  </span>
                 </div>
                 {booking.luggagePrice > 0 && (
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Equipaje:</span>
-                    <span className="text-gray-800">€{booking.luggagePrice}</span>
+                    <span className="text-gray-800">
+                      COP {formatCurrencyCOP(booking.luggagePrice)}
+                    </span>
                   </div>
                 )}
               </div>
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-gray-800">Total:</span>
-                <span className="text-2xl text-sky-600">€{booking.totalPrice}</span>
+                <span className="text-2xl text-sky-600">
+                  COP {formatCurrencyCOP(booking.totalPrice)}
+                </span>
               </div>
             </CardContent>
           </Card>

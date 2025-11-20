@@ -25,6 +25,13 @@ type CreateBookingProps = {
   }) => void;
 };
 
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export default function CreateBooking({ flightId, userId, userName, onProceedToPayment }: CreateBookingProps) {
   const [selectedSeat, setSelectedSeat] = useState<number | null>(null);
   const [selectedLuggage, setSelectedLuggage] = useState<number | null>(null);
@@ -37,16 +44,16 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
     const cargarDatos = async () => {
       try {
         console.log('🔄 CreateBooking - Cargando datos para vuelo:', flightId);
-        
+
         const flightData = await obtenerVueloPorId(flightId);
         console.log('✅ CreateBooking - Vuelo cargado:', flightData);
         setFlight(flightData);
-        
+
         const asientosData = await obtenerAsientosVuelo(flightId);
         console.log('✅ CreateBooking - Respuesta asientos RAW:', asientosData);
         console.log('✅ CreateBooking - asientosData.asientos:', asientosData.asientos);
         console.log('✅ CreateBooking - Cantidad:', asientosData.asientos?.length);
-        
+
         if (asientosData && asientosData.asientos) {
           console.log('✅ CreateBooking - Asignando asientos al estado:', asientosData.asientos);
           setAsientos(asientosData.asientos);
@@ -54,11 +61,11 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
           console.warn('⚠️ CreateBooking - No se encontró la propiedad asientos');
           setAsientos([]);
         }
-        
+
         const equipajesData = await obtenerEquipajes();
         console.log('✅ CreateBooking - Equipajes cargados:', equipajesData);
         setEquipajes(equipajesData);
-        
+
       } catch (error) {
         console.error('❌ CreateBooking - Error al cargar datos:', error);
         setAsientos([]);
@@ -171,75 +178,73 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
                   {/* Seats */}
                   <div className="space-y-2 bg-gray-50 p-4 rounded-lg">
                     {Array.from(new Set(asientos.map(a => a.fila))).sort((a, b) => a - b).map((rowNumber) => {
-                    return (
-                      <div key={rowNumber} className="flex items-center gap-2 justify-center">
-                        <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
-                        
-                        {/* Left side seats (A, B) */}
-                        <div className="flex gap-1">
-                          {['A', 'B'].map((letter) => {
-                            const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
-                            if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
-                            
-                            const isOccupied = !asiento.disponible;
-                            const isSelected = selectedSeat === asiento.id_asiento;
-                            
-                            return (
-                              <button
-                                key={asiento.id_asiento}
-                                disabled={isOccupied}
-                                onClick={() => setSelectedSeat(asiento.id_asiento)}
-                                className={`w-7 h-7 rounded text-xs transition-all ${
-                                  isOccupied
+                      return (
+                        <div key={rowNumber} className="flex items-center gap-2 justify-center">
+                          <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
+
+                          {/* Left side seats (A, B) */}
+                          <div className="flex gap-1">
+                            {['A', 'B'].map((letter) => {
+                              const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                              if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
+
+                              const isOccupied = !asiento.disponible;
+                              const isSelected = selectedSeat === asiento.id_asiento;
+
+                              return (
+                                <button
+                                  key={asiento.id_asiento}
+                                  disabled={isOccupied}
+                                  onClick={() => setSelectedSeat(asiento.id_asiento)}
+                                  className={`w-7 h-7 rounded text-xs transition-all ${isOccupied
                                     ? 'bg-gray-300 cursor-not-allowed'
                                     : isSelected
-                                    ? 'bg-sky-500 text-white scale-110'
-                                    : 'border-2 border-gray-300 hover:border-sky-400 hover:scale-105'
-                                }`}
-                              >
-                                {!isOccupied && letter}
-                              </button>
-                            );
-                          })}
-                        </div>
+                                      ? 'bg-sky-500 text-white scale-110'
+                                      : 'border-2 border-gray-300 hover:border-sky-400 hover:scale-105'
+                                    }`}
+                                >
+                                  {!isOccupied && letter}
+                                </button>
+                              );
+                            })}
+                          </div>
 
-                        {/* Aisle */}
-                        <div className="w-4"></div>
+                          {/* Aisle */}
+                          <div className="w-4"></div>
 
-                        {/* Right side seats (C, D, E) */}
-                        <div className="flex gap-1">
-                          {['C', 'D', 'E'].map((letter) => {
-                            const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
-                            if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
-                            
-                            const isOccupied = !asiento.disponible;
-                            const isSelected = selectedSeat === asiento.id_asiento;
-                            
-                            return (
-                              <button
-                                key={asiento.id_asiento}
-                                disabled={isOccupied}
-                                onClick={() => setSelectedSeat(asiento.id_asiento)}
-                                className={`w-7 h-7 rounded text-xs transition-all ${
-                                  isOccupied
+                          {/* Right side seats (C, D, E) */}
+                          <div className="flex gap-1">
+                            {['C', 'D', 'E'].map((letter) => {
+                              const asiento = asientos.find(a => a.fila === rowNumber && a.columna === letter);
+                              if (!asiento) return <div key={`${rowNumber}${letter}`} className="w-7 h-7"></div>;
+
+                              const isOccupied = !asiento.disponible;
+                              const isSelected = selectedSeat === asiento.id_asiento;
+
+                              return (
+                                <button
+                                  key={asiento.id_asiento}
+                                  disabled={isOccupied}
+                                  onClick={() => setSelectedSeat(asiento.id_asiento)}
+                                  className={`w-7 h-7 rounded text-xs transition-all ${isOccupied
                                     ? 'bg-gray-300 cursor-not-allowed'
                                     : isSelected
-                                    ? 'bg-sky-500 text-white scale-110'
-                                    : 'border-2 border-gray-300 hover:border-sky-400 hover:scale-105'
-                                }`}
-                              >
-                                {!isOccupied && letter}
-                              </button>
-                            );
-                          })}
-                        </div>
+                                      ? 'bg-sky-500 text-white scale-110'
+                                      : 'border-2 border-gray-300 hover:border-sky-400 hover:scale-105'
+                                    }`}
+                                >
+                                  {!isOccupied && letter}
+                                </button>
+                              );
+                            })}
+                          </div>
 
-                        <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
-                      </div>
-                    );
-                  })}
+                          <span className="text-xs text-gray-500 w-6 text-center">{rowNumber}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
               )}
             </CardContent>
           </Card>
@@ -255,11 +260,10 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
                   <button
                     key={equipaje.id_equipaje}
                     onClick={() => setSelectedLuggage(equipaje.id_equipaje)}
-                    className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${
-                      selectedLuggage === equipaje.id_equipaje
-                        ? 'border-sky-500 bg-sky-50'
-                        : 'border-gray-200 hover:border-sky-300'
-                    }`}
+                    className={`p-4 rounded-lg border-2 text-left transition-all hover:shadow-md ${selectedLuggage === equipaje.id_equipaje
+                      ? 'border-sky-500 bg-sky-50'
+                      : 'border-gray-200 hover:border-sky-300'
+                      }`}
                   >
                     <div className="flex items-start gap-3">
                       <Briefcase className={`w-5 h-5 mt-1 ${selectedLuggage === equipaje.id_equipaje ? 'text-sky-500' : 'text-gray-400'}`} />
@@ -267,8 +271,11 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
                         <div className="flex items-center justify-between mb-1">
                           <p className="text-gray-800">{equipaje.tipo}</p>
                           <Badge className={selectedLuggage === equipaje.id_equipaje ? 'bg-sky-500' : 'bg-gray-500'}>
-                            {equipaje.precio === 0 ? 'Gratis' : `€${equipaje.precio}`}
+                            {equipaje.precio === 0
+                              ? 'Gratis'
+                              : `COP ${formatCurrencyCOP(equipaje.precio)}`}
                           </Badge>
+
                         </div>
                         <p className="text-xs text-gray-600">{equipaje.descripcion}</p>
                       </div>
@@ -305,7 +312,7 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
                 <p className="text-sm text-gray-500">Fecha y Hora</p>
                 <p className="text-gray-800">{new Date(flight.fecha_salida).toLocaleDateString('es-ES')}</p>
                 <p className="text-gray-800">
-                  {new Date(flight.fecha_salida).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} - 
+                  {new Date(flight.fecha_salida).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })} -
                   {new Date(flight.fecha_llegada).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
@@ -334,22 +341,29 @@ export default function CreateBooking({ flightId, userId, userName, onProceedToP
               <div>
                 <div className="flex justify-between mb-2">
                   <span className="text-gray-600">Vuelo:</span>
-                  <span className="text-gray-800">€{flight.precio_base}</span>
+                  <span className="text-gray-800">
+                    COP {formatCurrencyCOP(flight.precio_base)}
+                  </span>
                 </div>
                 {selectedLuggageOption && selectedLuggageOption.precio > 0 && (
                   <div className="flex justify-between mb-2">
                     <span className="text-gray-600">Equipaje:</span>
-                    <span className="text-gray-800">€{selectedLuggageOption.precio}</span>
+                    <span className="text-gray-800">
+                      COP {formatCurrencyCOP(selectedLuggageOption.precio)}
+                    </span>
                   </div>
                 )}
               </div>
               <Separator />
               <div className="flex justify-between items-center">
                 <span className="text-gray-800">Total:</span>
-                <span className="text-2xl text-sky-600">€{totalPrice.toFixed(2)}</span>
+                <span className="text-2xl text-sky-600">
+                  COP {formatCurrencyCOP(totalPrice)}
+                </span>
               </div>
-              <Button 
-                onClick={handleProceedToPayment} 
+
+              <Button
+                onClick={handleProceedToPayment}
                 className="w-full bg-sky-500 hover:bg-sky-600"
                 disabled={!selectedSeat || !selectedLuggage}
               >
