@@ -79,20 +79,21 @@ export default function PaymentSuccessPage() {
         console.log('✅ Equipaje obtenido:', equipaje);
         setEquipajeData(equipaje || null);
 
-        // ✅ PASO 4: Enviar correo de confirmación de pago
-        const userEmail = user?.email || bookingData.userEmail || localStorage.getItem('userEmail');
-        if (userEmail && reservaResponse?.id_reserva) {
+        // ✅ PASO 4: Enviar correo de confirmación de pago exitoso
+        const userEmail = bookingData.userEmail || localStorage.getItem('userEmail');
+        console.log('📧 Email del usuario:', userEmail);
+        if (userEmail) {
           try {
             console.log('📧 Enviando correo a:', userEmail);
-            await emailService.enviarConfirmacionPago(
+            const emailResult = await emailService.enviarConfirmacionPago(
               userEmail,
               `RES-${reservaResponse.id_reserva}`,
               bookingData.totalPrice
             );
-            console.log('✅ Correo de confirmación enviado');
+            console.log('✅ Correo de confirmación enviado:', emailResult);
             toast.success('Correo de confirmación enviado');
           } catch (emailError) {
-            console.error('❌ Error enviando correo:', emailError);
+            console.error('❌ Error enviando correo de confirmación:', emailError);
             toast.error('Error enviando correo de confirmación');
           }
         } else {
@@ -112,7 +113,7 @@ export default function PaymentSuccessPage() {
     };
 
     crearReservaPostPago();
-  }, [searchParams, navigate, user]);
+  }, [searchParams, navigate]);
 
   if (loading) {
     return (
@@ -259,7 +260,7 @@ export default function PaymentSuccessPage() {
 
           {/* Mensaje */}
           <p className="text-sm text-gray-600 text-center mb-6">
-            Hemos enviado tu confirmación de pago a tu correo electrónico.
+            Hemos enviado tu tarjeta de embarque y los detalles de tu reserva a tu correo electrónico.
           </p>
 
           {/* Botones */}
