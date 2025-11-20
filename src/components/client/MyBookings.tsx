@@ -11,6 +11,13 @@ type MyBookingsProps = {
   userId: number;
 };
 
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export default function MyBookings({ userId }: MyBookingsProps) {
   const [bookings, setBookings] = useState<ReservaResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,7 +102,7 @@ export default function MyBookings({ userId }: MyBookingsProps) {
                   <div className="flex flex-col justify-between items-end md:border-l md:pl-6">
                     <div className="text-right">
                       <p className="text-sm text-gray-500">Total</p>
-                      <p className="text-2xl text-green-600">€{booking.total}</p>
+                      <p className="text-2xl text-green-600">${formatCurrencyCOP(booking.total)}</p>
                     </div>
                   </div>
                 </div>

@@ -15,6 +15,13 @@ const booking = {
   totalPrice: 49.99,
 };
 
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export default function PaymentCancelPage() {
   const navigate = useNavigate();
 
@@ -67,7 +74,7 @@ export default function PaymentCancelPage() {
             <Separator />
             <div className="flex justify-between">
               <span className="text-gray-600">Monto:</span>
-              <span className="text-gray-800">€{booking.totalPrice}</span>
+              <span className="text-gray-800">${formatCurrencyCOP(booking.totalPrice)}</span>
             </div>
           </div>
 

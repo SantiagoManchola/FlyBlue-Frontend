@@ -8,6 +8,14 @@ type FlightDetailProps = {
   flightId: string;
 };
 
+// 👉 Helper para formatear COP con puntos de miles
+function formatCurrencyCOP(value: number) {
+  return value.toLocaleString('es-CO', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
+
 export default function FlightDetail({ flightId }: FlightDetailProps) {
   // Mock data - in real app this would come from API
   const flight = {
@@ -19,20 +27,20 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
     departureTime: '08:00',
     arrivalTime: '09:15',
     duration: '1h 15m',
-    price: 49.99,
+    price: 145000, // 👈 ahora en COP
     aircraft: 'Airbus A320',
     status: 'scheduled',
     totalSeats: 180,
     availableSeats: 120,
     services: [
-      'WiFi a bordo (€5)',
+      'WiFi a bordo (COP 5.000)',
       'Entretenimiento en pantalla',
       'Servicio de bebidas',
       'Snacks disponibles para compra',
     ],
     baggage: [
       { type: 'Equipaje de Mano', included: true, price: 0 },
-      { type: 'Equipaje Facturado', included: false, price: 25 },
+      { type: 'Equipaje Facturado', included: false, price: 25000 },
     ],
   };
 
@@ -51,7 +59,8 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
         <CardContent className="p-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="text-center flex-1">
-              <p className="text-sm text-gray-600 mb-1">{flight.origin.city}</p>
+              {/* city -> name para que no truene con el mock */}
+              <p className="text-sm text-gray-600 mb-1">{flight.origin.name}</p>
               <p className="text-4xl text-sky-600 mb-1">{flight.departureTime}</p>
               <p className="text-gray-800">{flight.origin.code}</p>
               <p className="text-xs text-gray-500 mt-2">{flight.origin.airport}</p>
@@ -68,7 +77,7 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
             </div>
 
             <div className="text-center flex-1">
-              <p className="text-sm text-gray-600 mb-1">{flight.destination.city}</p>
+              <p className="text-sm text-gray-600 mb-1">{flight.destination.name}</p>
               <p className="text-4xl text-sky-600 mb-1">{flight.arrivalTime}</p>
               <p className="text-gray-800">{flight.destination.code}</p>
               <p className="text-xs text-gray-500 mt-2">{flight.destination.airport}</p>
@@ -203,7 +212,9 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
                     </p>
                   </div>
                   <Badge className={bag.included ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
-                    {bag.price === 0 ? 'Gratis' : `€${bag.price}`}
+                    {bag.price === 0
+                      ? 'Gratis'
+                      : `COP ${formatCurrencyCOP(bag.price)}`}
                   </Badge>
                 </div>
                 {index < flight.baggage.length - 1 && <Separator className="mt-3" />}
@@ -221,7 +232,9 @@ export default function FlightDetail({ flightId }: FlightDetailProps) {
               <DollarSign className="w-8 h-8 text-sky-600" />
               <div>
                 <p className="text-sm text-gray-600">Precio desde</p>
-                <p className="text-3xl text-sky-600">€{flight.price}</p>
+                <p className="text-3xl text-sky-600">
+                  COP {formatCurrencyCOP(flight.price)}
+                </p>
                 <p className="text-xs text-gray-500">por persona (solo ida)</p>
               </div>
             </div>
