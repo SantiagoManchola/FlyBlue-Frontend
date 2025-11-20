@@ -1,0 +1,10 @@
+{
+  "user": {
+    "id": 1,
+    "nombre": "Admin",
+    "apellido": "FlyBlue",
+    "email": "admin@flyblue.com",
+    "rol": "administrador"
+  },
+  "token": "mock-admin-token-12345"
+}

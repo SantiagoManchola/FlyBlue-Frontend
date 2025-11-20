@@ -3,9 +3,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  // En desarrollo usa /v1 (proxy de vite)
-  // En producción usa la URL completa
-  baseURL: import.meta.env.DEV ? "/v1" : `${import.meta.env.VITE_API_URL || "https://flyblue-api-server-dev-g0a8bsfaethdehe0.canadacentral-01.azurewebsites.net"}/v1`,
+  baseURL: `${import.meta.env.VITE_API_URL}/v1`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -25,8 +23,11 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error("❌ Error en request:", error.response?.data || error.message);
-    
+    console.error(
+      "❌ Error en request:",
+      error.response?.data || error.message
+    );
+
     if (error.response?.status === 401) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");

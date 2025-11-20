@@ -16,6 +16,8 @@ import ProfilePage from "../pages/ProfilePage";
 import ProtectedRoute from "./ProtectedRoute";
 import PublicRoute from "./PublicRoute";
 import { User } from "../App";
+import PaymentSuccessPage from '../pages/client/ClientPaymentSuccessPage';
+import PaymentCancelPage from '../pages/client/ClientPaymentCancelPage';
 
 type RouterConfig = {
   user: User | null;
@@ -28,6 +30,15 @@ export const createAppRouter = ({ user, onLogin, onLogout }: RouterConfig) => {
     {
       path: "/",
       element: <Navigate to="/login" replace />,
+    },
+
+    {
+      path: "/payment-success",
+      element: <PaymentSuccessPage />,
+    },
+    {
+      path: "/payment-cancel",
+      element: <PaymentCancelPage />,
     },
     {
       path: "/",

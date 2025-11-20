@@ -1,8 +1,11 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path from 'path';
 
 export default defineConfig(async () => {
+
+  // Lee las variables desde .env 
+  const env = loadEnv(process.cwd(), ''); // <-- con '' trae todas
   const tailwindModule = await import('@tailwindcss/vite');
   const tailwindcss = (tailwindModule && (tailwindModule.default ?? tailwindModule)) as any;
 
@@ -11,6 +14,7 @@ export default defineConfig(async () => {
     resolve: {
       extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
       alias: {
+        '@': path.resolve(__dirname, './src'),
         'vaul@1.1.2': 'vaul',
         'sonner@2.0.3': 'sonner',
         'recharts@2.15.2': 'recharts',
@@ -49,23 +53,22 @@ export default defineConfig(async () => {
         '@radix-ui/react-aspect-ratio@1.1.2': '@radix-ui/react-aspect-ratio',
         '@radix-ui/react-alert-dialog@1.1.6': '@radix-ui/react-alert-dialog',
         '@radix-ui/react-accordion@1.2.3': '@radix-ui/react-accordion',
-        '@': path.resolve(__dirname, './src'),
       },
     },
     build: {
       target: 'esnext',
-      outDir: 'build',
+      outDir: 'dist',
     },
     server: {
       port: 3000,
       open: true,
       proxy: {
         '/v1': {
-          target: 'https://flyblue-api-server-dev-g0a8bsfaethdehe0.canadacentral-01.azurewebsites.net',
+          target: env.VITE_API_URL,  // <-- ahora usa lo del .env
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path,
-        }
+        },
       }
     },
   };

@@ -38,6 +38,13 @@ export default function App() {
 
   const handleLogin = (userData: User) => {
     setUser(userData);
+    // Guardar el usuario en el formato que esperas
+    localStorage.setItem('user', JSON.stringify({
+      id: userData.id,
+      nombre: userData.name,
+      correo: userData.email,
+      rol: userData.role,
+    }));
   };
 
   const handleLogout = () => {
