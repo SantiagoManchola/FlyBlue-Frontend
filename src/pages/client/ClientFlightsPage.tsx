@@ -4,7 +4,7 @@ import Flights from '../../components/client/Flights';
 export default function ClientFlightsPage() {
   const navigate = useNavigate();
 
-  const handleBookFlight = (flightId: number) => {
+  const handleBookFlight = (flightId: string) => {
     navigate(`/client/booking/${flightId}`);
   };
 
